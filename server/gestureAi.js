@@ -135,13 +135,13 @@ export async function interpretGestures({
   const parts = [
     {
       text: [
-        "Interpret this time-ordered sequence of camera images showing the signer, hands, and any visible facial expression.",
-        "Recognize the complete signed message from the visual sequence; do not restrict interpretation to a preset gesture, pose, or vocabulary list.",
-        "Use motion between frames, hand shape, orientation, position, facial expression, and context. Do not assume a particular sign language or silently substitute spoken-language gestures for signs.",
-        "Recognize culturally meaningful greetings when visible. In particular, palms pressed together in front of the chest or face is commonly the Indian greeting Namaste; do not label that pose Hello or a waving gesture unless the frames show a wave.",
-        "Return the clearest concise English transcript you can infer and a relevant, respectful conversational reply.",
+        "Interpret these time-ordered camera images of a person's hands, upper body, and visible facial expression.",
+        "Identify the specific sign or gesture shown from its hand shape, orientation, location, motion between frames, facial expression, and context; do not default to Hello or another common greeting.",
+        "A static open palm is not by itself a wave or Hello: use Hello only when the sequence visibly shows a wave or the context clearly supports that meaning.",
+        "Support both sign-language signs and familiar casual, social, or internet gestures, including less common ones. Do not restrict interpretation to a preset vocabulary; describe the visible gesture plainly when its intended meaning is uncertain.",
+        "Do not assume a sign language or invent a translation. When the movement or hand shape is unclear, say so instead of guessing.",
+        "Return a concise English transcript of the best-supported meaning or visible gesture and a relevant, respectful conversational reply.",
         "Keep the reply to one short sentence so it can be returned quickly.",
-        "Do not invent words when the meaning is unclear. State that it is unclear in the transcript and ask for repetition or clarification in the reply.",
         "This is an experimental vision model, not certified sign-language translation. Never claim certainty you do not have.",
         'Return only JSON matching {"transcript":"...","reply":"..."}',
       ].join(" "),
@@ -180,7 +180,7 @@ export async function interpretGestures({
         contents: [{ role: "user", parts }],
         generationConfig: {
           temperature: 0.2,
-          maxOutputTokens: 160,
+          maxOutputTokens: 96,
           responseMimeType: "application/json",
           responseSchema: {
             type: "OBJECT",

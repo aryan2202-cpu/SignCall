@@ -414,14 +414,14 @@ export default function App() {
 
             const video = localVideoRef.current;
             if (
-              now - lastGestureCaptureRef.current >= 500 &&
+              now - lastGestureCaptureRef.current >= 300 &&
               !isCapturingGestureFrameRef.current &&
               video?.videoWidth
             ) {
               const captureCanvas =
                 frameCaptureCanvasRef.current || document.createElement("canvas");
               frameCaptureCanvasRef.current = captureCanvas;
-              const scale = Math.min(1, 320 / video.videoWidth);
+              const scale = Math.min(1, 448 / video.videoWidth);
               captureCanvas.width = Math.round(video.videoWidth * scale);
               captureCanvas.height = Math.round(video.videoHeight * scale);
               const captureContext = captureCanvas.getContext("2d");
@@ -436,7 +436,7 @@ export default function App() {
                 const captureGeneration = gestureCaptureGenerationRef.current;
                 isCapturingGestureFrameRef.current = true;
                 lastGestureCaptureRef.current = now;
-                captureGestureFrame(captureCanvas, 0.38)
+                captureGestureFrame(captureCanvas, 0.5)
                   .then((data) => {
                     if (
                       captureGeneration !== gestureCaptureGenerationRef.current ||
@@ -488,7 +488,7 @@ export default function App() {
 
             if (
               gestureFramesRef.current.length > 0 &&
-              now - lastHandDetectedAtRef.current >= 1000
+              now - lastHandDetectedAtRef.current >= 650
             ) {
               finalizeSignedSentence();
             }

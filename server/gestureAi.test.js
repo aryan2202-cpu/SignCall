@@ -90,10 +90,12 @@ test("discovers an available model and sends the camera frames to it", async () 
   assert.equal(requests[1].options.headers["x-goog-api-key"], "test-discovery-key");
   const requestBody = JSON.parse(requests[1].options.body);
   assert.equal(requestBody.contents[0].parts[2].inline_data.data, "AQID");
-  assert.match(requestBody.contents[0].parts[0].text, /do not restrict interpretation/);
-  assert.match(requestBody.contents[0].parts[0].text, /palms pressed together.*Namaste/);
+  assert.match(requestBody.contents[0].parts[0].text, /do not restrict interpretation to a preset vocabulary/i);
+  assert.match(requestBody.contents[0].parts[0].text, /static open palm is not by itself a wave or Hello/);
+  assert.match(requestBody.contents[0].parts[0].text, /casual, social, or internet gestures/);
+  assert.doesNotMatch(requestBody.contents[0].parts[0].text, /Namaste/);
   assert.equal(requestBody.generationConfig.responseMimeType, "application/json");
-  assert.equal(requestBody.generationConfig.maxOutputTokens, 160);
+  assert.equal(requestBody.generationConfig.maxOutputTokens, 96);
 });
 
 test("prefers a configured model only when the API key has access to it", async () => {
