@@ -72,7 +72,8 @@ distinguish movement (such as a wave) from a static hand pose.
 Gemini requests have a 25-second server timeout so slower model responses have
 more time to finish. If Gemini still does not respond, the request times out
 instead of remaining in an interpreting state indefinitely; captured frames
-remain available for a manual retry.
+remain available for a manual retry. A failed phrase is not automatically
+resent; use Finish & reply to retry it, or Clear before starting a new phrase.
 Before joining or creating a room, each participant enters a display name; the
 name is shown on their participant tile, in the participant list, and alongside
 their transcript entries. Gesture interpretation also reports visible facial

@@ -424,13 +424,6 @@ export default function App() {
 
           const now = Date.now();
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            if (
-              gestureAutoSubmittedRef.current &&
-              gestureFramesRef.current.length > 0
-            ) {
-              gestureAutoSubmittedRef.current = false;
-              setErrorMessage("");
-            }
             lastHandDetectedAtRef.current = now;
 
             for (const landmarks of results.multiHandLandmarks) {
