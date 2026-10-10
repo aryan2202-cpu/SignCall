@@ -337,6 +337,33 @@ input:focus-visible {
   width: 100%;
 }
 
+.sc-name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(100%, 480px);
+  color: var(--sc-text-dark);
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.sc-input-name {
+  width: 100%;
+  height: 48px;
+  padding: 0 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
+  background: #F9FAFB;
+  color: var(--sc-text-main);
+  font: inherit;
+  font-weight: 500;
+}
+
+.sc-input-name::placeholder {
+  color: var(--sc-text-subtle);
+}
+
 .sc-btn-primary {
   height: 52px;
   padding: 0 28px;

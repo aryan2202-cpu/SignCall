@@ -66,8 +66,11 @@ deployment, the production client uses the same origin for its API and
 Socket.IO connection; the LiveKit server must also be reachable by each
 participant.
 Rooms allow up to five total participants. Gesture phrases auto-submit after
-about 1.2 seconds without a detected hand and send up to eight representative
+about one second without a detected hand and send up to eight representative
 frames to Gemini to reduce interpretation time.
+Before joining or creating a room, each participant enters a display name; the
+name is shown on their participant tile, in the participant list, and alongside
+their transcript entries.
 
 ## Deploy publicly with Render
 

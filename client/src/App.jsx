@@ -69,6 +69,28 @@ function ParticipantMedia({ participant, className }) {
   );
 }
 
+function captureGestureFrame(canvas, quality) {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error("Could not capture a camera frame. Check that your camera is active."));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = reader.result;
+        if (typeof dataUrl !== "string") {
+          reject(new Error("Could not encode a camera frame."));
+          return;
+        }
+        resolve(dataUrl.split(",")[1]);
+      };
+      reader.onerror = () => reject(new Error("Could not read a captured camera frame."));
+      reader.readAsDataURL(blob);
+    }, "image/jpeg", quality);
+  });
+}
+
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL ||
   (typeof window !== "undefined"
@@ -81,6 +103,9 @@ export default function App() {
   // Navigation & Room state
   const [roomId, setRoomId] = useState(
     () => new URLSearchParams(window.location.search).get("room")?.toLowerCase() || ""
+  );
+  const [displayName, setDisplayName] = useState(
+    () => window.localStorage.getItem("signcall-display-name") || ""
   );
   const [currentRoom, setCurrentRoom] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -137,11 +162,14 @@ export default function App() {
   const frameCaptureCanvasRef = useRef(null);
   const transcriptEndRef = useRef(null);
 
-  const noHandFramesRef = useRef(0);
+  const liveGestureLabelRef = useRef(null);
   const gestureFramesRef = useRef([]);
   const gestureFrameSeenCountRef = useRef(0);
   const lastGestureCaptureRef = useRef(0);
   const gesturePhraseStartedAtRef = useRef(0);
+  const gestureCaptureGenerationRef = useRef(0);
+  const isCapturingGestureFrameRef = useRef(false);
+  const lastHandDetectedAtRef = useRef(0);
   const isInterpretingGesturesRef = useRef(false);
 
   // Callback ref for local video
@@ -247,6 +275,7 @@ export default function App() {
     const lastCapturedAt = lastGestureCaptureRef.current;
     const phraseStartedAt = gesturePhraseStartedAtRef.current;
     gestureFramesRef.current = [];
+    gestureCaptureGenerationRef.current += 1;
     gestureFrameSeenCountRef.current = 0;
     setGestureFrameCount(0);
     lastGestureCaptureRef.current = 0;
@@ -279,7 +308,7 @@ export default function App() {
         });
         const transcriptEntry = {
           id: `sign-${Date.now()}`,
-          who: "You",
+          who: displayName,
           mode: "AI Gesture Transcript",
           time,
           text: result.transcript.trim(),
@@ -326,7 +355,7 @@ export default function App() {
         setIsInterpretingGestures(false);
       }
     })();
-  }, [speakText]);
+  }, [displayName, speakText]);
 
   // Sync video streams with elements
   useEffect(() => {
@@ -360,9 +389,9 @@ export default function App() {
 
         handsInstance.setOptions({
           maxNumHands: 2,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.6,
-          minTrackingConfidence: 0.6,
+          modelComplexity: 0,
+          minDetectionConfidence: 0.55,
+          minTrackingConfidence: 0.55,
         });
 
         handsInstance.onResults((results) => {
@@ -375,20 +404,24 @@ export default function App() {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           if (isInterpretingGesturesRef.current) return;
 
+          const now = Date.now();
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-            noHandFramesRef.current = 0;
+            lastHandDetectedAtRef.current = now;
 
             for (const landmarks of results.multiHandLandmarks) {
               drawHandLandmarks(ctx, landmarks, canvas.width, canvas.height);
             }
 
-            const now = Date.now();
             const video = localVideoRef.current;
-            if (now - lastGestureCaptureRef.current >= 600 && video?.videoWidth) {
+            if (
+              now - lastGestureCaptureRef.current >= 500 &&
+              !isCapturingGestureFrameRef.current &&
+              video?.videoWidth
+            ) {
               const captureCanvas =
                 frameCaptureCanvasRef.current || document.createElement("canvas");
               frameCaptureCanvasRef.current = captureCanvas;
-              const scale = Math.min(1, 384 / video.videoWidth);
+              const scale = Math.min(1, 320 / video.videoWidth);
               captureCanvas.width = Math.round(video.videoWidth * scale);
               captureCanvas.height = Math.round(video.videoHeight * scale);
               const captureContext = captureCanvas.getContext("2d");
@@ -400,50 +433,69 @@ export default function App() {
                   captureCanvas.width,
                   captureCanvas.height
                 );
-                const [, data] = captureCanvas
-                  .toDataURL("image/jpeg", 0.42)
-                  .split(",");
-                if (data.length <= 400_000) {
-                  if (gestureFramesRef.current.length === 0) {
-                    gesturePhraseStartedAtRef.current = now;
-                    setLatestGestureCaption(null);
-                  }
-                  const nextSample = addGestureFrame(
-                    gestureFramesRef.current,
-                    gestureFrameSeenCountRef.current,
-                    {
-                      mimeType: "image/jpeg",
-                      data,
-                      capturedAtMs: now - gesturePhraseStartedAtRef.current,
+                const captureGeneration = gestureCaptureGenerationRef.current;
+                isCapturingGestureFrameRef.current = true;
+                lastGestureCaptureRef.current = now;
+                captureGestureFrame(captureCanvas, 0.38)
+                  .then((data) => {
+                    if (
+                      captureGeneration !== gestureCaptureGenerationRef.current ||
+                      isInterpretingGesturesRef.current
+                    ) {
+                      return;
                     }
-                  );
-                  gestureFramesRef.current = nextSample.frames;
-                  gestureFrameSeenCountRef.current = nextSample.seenCount;
-                  lastGestureCaptureRef.current = now;
-                  setGestureFrameCount(gestureFramesRef.current.length);
-                } else {
-                  setErrorMessage("A camera frame was too large to send. Move closer to the camera and try again.");
-                }
+                    if (data.length > 400_000) {
+                      setErrorMessage("A camera frame was too large to send. Move closer to the camera and try again.");
+                      return;
+                    }
+                    if (gestureFramesRef.current.length === 0) {
+                      gesturePhraseStartedAtRef.current = now;
+                      setLatestGestureCaption(null);
+                    }
+                    const nextSample = addGestureFrame(
+                      gestureFramesRef.current,
+                      gestureFrameSeenCountRef.current,
+                      {
+                        mimeType: "image/jpeg",
+                        data,
+                        capturedAtMs: now - gesturePhraseStartedAtRef.current,
+                      }
+                    );
+                    gestureFramesRef.current = nextSample.frames;
+                    gestureFrameSeenCountRef.current = nextSample.seenCount;
+                    setGestureFrameCount(gestureFramesRef.current.length);
+                  })
+                  .catch((error) => {
+                    if (captureGeneration === gestureCaptureGenerationRef.current) {
+                      setErrorMessage(error.message);
+                    }
+                  })
+                  .finally(() => {
+                    isCapturingGestureFrameRef.current = false;
+                  });
               }
             }
 
-            setLiveGestureLabel("Hand detected");
+            if (liveGestureLabelRef.current !== "Hand detected") {
+              liveGestureLabelRef.current = "Hand detected";
+              setLiveGestureLabel("Hand detected");
+            }
           } else {
-            // No hand detected
-            noHandFramesRef.current += 1;
-            setLiveGestureLabel(null);
+            if (liveGestureLabelRef.current !== null) {
+              liveGestureLabelRef.current = null;
+              setLiveGestureLabel(null);
+            }
 
-            // Auto-finalize after a short pause so the result arrives sooner.
             if (
-              noHandFramesRef.current === 14 &&
-              gestureFramesRef.current.length > 0
+              gestureFramesRef.current.length > 0 &&
+              now - lastHandDetectedAtRef.current >= 1000
             ) {
               finalizeSignedSentence();
             }
           }
         });
 
-        // Frame pump (~12-14 FPS for responsive hand recognition)
+        // Keep inference serial and leave breathing room for lower-powered devices.
         pollTimer = setInterval(async () => {
           if (!isRunning || !signMode || isSending) return;
 
@@ -466,7 +518,7 @@ export default function App() {
               isSending = false;
             }
           }
-        }, 85);
+        }, 100);
       } catch (err) {
         console.error("MediaPipe initialization error:", err);
       }
@@ -476,6 +528,7 @@ export default function App() {
 
     return () => {
       isRunning = false;
+      gestureCaptureGenerationRef.current += 1;
       if (pollTimer) clearInterval(pollTimer);
       if (handsInstance) {
         try {
@@ -489,12 +542,12 @@ export default function App() {
     };
   }, [signMode, localStream, currentRoom, speakText, finalizeSignedSentence]);
 
-  const joinLiveKitRoom = useCallback(async (roomId) => {
+  const joinLiveKitRoom = useCallback(async (roomId, participantName) => {
     const [response, liveKitSdk] = await Promise.all([
       fetch(`${BACKEND_URL}/api/livekit/token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomId }),
+        body: JSON.stringify({ roomId, name: participantName }),
       }),
       import("livekit-client"),
     ]);
@@ -605,16 +658,24 @@ export default function App() {
     socket.on("room-full", ({ roomId }) => {
       setErrorMessage(`Room "${roomId}" is full (maximum 5 participants).`);
       setCurrentRoom(null);
+      stopLocalMedia();
     });
 
-    socket.on("joined-room", async ({ roomId, otherUser }) => {
+    socket.on("join-error", ({ message }) => {
+      setErrorMessage(message || "Could not join the room.");
+      setCurrentRoom(null);
+      stopLocalMedia();
+    });
+
+    socket.on("joined-room", async ({ roomId, otherUser, participantName }) => {
       setCurrentRoom(roomId);
+      setDisplayName(participantName);
       setErrorMessage("");
       setPeerConnected(Boolean(otherUser));
       setStatusMessage(otherUser ? "Connecting to peer..." : "Waiting for peer...");
 
       try {
-        await joinLiveKitRoom(roomId);
+        await joinLiveKitRoom(roomId, participantName);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Could not connect to the LiveKit room.";
@@ -642,12 +703,12 @@ export default function App() {
     });
 
     // Remote transcript item received
-    socket.on("remote-transcript-message", ({ message }) => {
+    socket.on("remote-transcript-message", ({ message, participantName }) => {
       setTranscript((prev) => [
         ...prev,
         {
           ...message,
-          who: "Peer",
+          who: message.isAI ? message.who : participantName || "Participant",
           bubbleBg:
             message.mode === "Signed" ||
             message.mode === "Gesture transcript" ||
@@ -667,30 +728,42 @@ export default function App() {
   const handleJoinRoom = async (e) => {
     if (e) e.preventDefault();
     const trimmed = roomId.trim().toLowerCase();
+    const name = displayName.trim().replace(/\s+/g, " ");
     if (!trimmed) {
       setErrorMessage("Please enter a room code.");
       return;
     }
+    if (!name || name.length > 32) {
+      setErrorMessage("Choose a name between 1 and 32 characters.");
+      return;
+    }
 
     setErrorMessage("");
+    localStorage.setItem("signcall-display-name", name);
     setStatusMessage(`Joining room "${trimmed}"...`);
     if (!(await startLocalMedia())) return;
 
     if (socketRef.current) {
-      socketRef.current.emit("join-room", { roomId: trimmed });
+      socketRef.current.emit("join-room", { roomId: trimmed, name });
     }
   };
 
   // Create new instant room
   const handleCreateRoom = async () => {
+    const name = displayName.trim().replace(/\s+/g, " ");
+    if (!name || name.length > 32) {
+      setErrorMessage("Choose a name between 1 and 32 characters.");
+      return;
+    }
     const randomCode = `sign-${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
     setRoomId(randomCode);
     setErrorMessage("");
+    localStorage.setItem("signcall-display-name", name);
     setStatusMessage(`Creating room "${randomCode}"...`);
     if (!(await startLocalMedia())) return;
 
     if (socketRef.current) {
-      socketRef.current.emit("join-room", { roomId: randomCode });
+      socketRef.current.emit("join-room", { roomId: randomCode, name });
     }
   };
 
@@ -708,7 +781,9 @@ export default function App() {
     setIsMicMuted(false);
     setIsVideoOff(false);
     setLiveGestureLabel(null);
+    liveGestureLabelRef.current = null;
     gestureFramesRef.current = [];
+    gestureCaptureGenerationRef.current += 1;
     gestureFrameSeenCountRef.current = 0;
     setGestureFrameCount(0);
     lastGestureCaptureRef.current = 0;
@@ -771,6 +846,8 @@ export default function App() {
   };
 
   const handleClearGestureFrames = () => {
+    gestureCaptureGenerationRef.current += 1;
+    isCapturingGestureFrameRef.current = false;
     gestureFramesRef.current = [];
     gestureFrameSeenCountRef.current = 0;
     setGestureFrameCount(0);
@@ -791,7 +868,7 @@ export default function App() {
 
     const newEntry = {
       id: `type-${Date.now()}`,
-      who: "You",
+      who: displayName,
       mode: "Typed",
       time: timeStr,
       text: text,
@@ -1007,11 +1084,23 @@ export default function App() {
 
               {/* Action Form */}
               <div className="sc-action-box">
+                <label className="sc-name-field">
+                  <span>Your name in the call</span>
+                  <input
+                    type="text"
+                    value={displayName}
+                    maxLength={32}
+                    autoComplete="name"
+                    placeholder="Enter the name others will see"
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    className="sc-input-name"
+                  />
+                </label>
                 <div className="sc-action-row">
                   <button
                     type="button"
                     onClick={handleCreateRoom}
-                    disabled={!isConnected}
+                    disabled={!isConnected || !displayName.trim()}
                     className="sc-btn-primary"
                   >
                     <span>Create Room</span>
@@ -1030,7 +1119,7 @@ export default function App() {
                     />
                     <button
                       type="submit"
-                      disabled={!isConnected || !roomId.trim()}
+                      disabled={!isConnected || !roomId.trim() || !displayName.trim()}
                       className="sc-btn-secondary"
                     >
                       Join Room
@@ -1145,7 +1234,7 @@ export default function App() {
 
                     {isVideoOff && (
                       <div className="sc-cam-off-avatar">
-                        <span>You</span>
+                        <span>{displayName || "You"}</span>
                       </div>
                     )}
                   </div>
@@ -1161,7 +1250,7 @@ export default function App() {
                 {/* Top overlay badges */}
                 <div className="sc-speaker-badges">
                   <span className="sc-badge-dark">
-                    {isYouOnMainStage ? "You" : "Peer"}
+                    {isYouOnMainStage ? displayName || "You" : mainStageParticipant?.name || "Participant"}
                   </span>
                   {signMode && (
                     <span className="sc-badge-blue">
@@ -1201,7 +1290,7 @@ export default function App() {
                   >
                     <div className="sc-captions-card-top">
                       <span className="sc-captions-label">
-                        {isYouOnMainStage ? "You, signing" : "Peer, signing"}
+                      {displayName || "You"}, signing
                         {isInterpretingGestures
                           ? " · Gemini is interpreting the gesture sequence..."
                           : ` · ${gestureFrameCount} of ${MAX_GESTURE_FRAMES} representative frames captured for Gemini`}
@@ -1276,7 +1365,7 @@ export default function App() {
                       muted
                       className={`sc-video-thumb sc-mirror ${isVideoOff ? "hidden" : ""}`}
                     />
-                    <span className="sc-tile-name">You</span>
+                    <span className="sc-tile-name">{displayName || "You"}</span>
                     {liveGestureLabel && (
                       <span className="sc-tile-detected-badge">
                         {liveGestureLabel}
@@ -1425,8 +1514,10 @@ export default function App() {
                 <ul className="sc-people-list">
                   {/* You (Always Present) */}
                   <li className="sc-person-item active-user">
-                    <span className="sc-person-avatar avatar-you">Y</span>
-                    <span className="sc-person-name">You</span>
+                    <span className="sc-person-avatar avatar-you">
+                      {(displayName.trim()[0] || "Y").toUpperCase()}
+                    </span>
+                    <span className="sc-person-name">{displayName || "You"}</span>
                     <span className="sc-person-status text-blue">
                       {isMicMuted ? "Muted" : signMode ? "Signing" : "Active"}
                     </span>

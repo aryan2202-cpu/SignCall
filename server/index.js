@@ -36,11 +36,21 @@ app.post("/api/interpret-gestures", async (req, res) => {
 });
 
 app.post("/api/livekit/token", async (req, res) => {
-  const { roomId } = req.body ?? {};
+  const { roomId, name } = req.body ?? {};
   if (typeof roomId !== "string" || !/^[a-zA-Z0-9_-]{1,64}$/.test(roomId)) {
     res.status(400).json({ error: "A valid room code is required." });
     return;
   }
+  if (
+    typeof name !== "string" ||
+    !name.trim() ||
+    name.trim().length > 32 ||
+    /[\u0000-\u001f\u007f]/.test(name)
+  ) {
+    res.status(400).json({ error: "Enter a display name between 1 and 32 characters." });
+    return;
+  }
+  const participantName = name.trim().replace(/\s+/g, " ");
 
   const { LIVEKIT_URL, LIVEKIT_API_KEY, LIVEKIT_API_SECRET } = process.env;
   if (!LIVEKIT_URL || !LIVEKIT_API_KEY || !LIVEKIT_API_SECRET) {
@@ -66,6 +76,7 @@ app.post("/api/livekit/token", async (req, res) => {
   try {
     const accessToken = new AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET, {
       identity: `signspeak-${randomUUID()}`,
+      name: participantName,
       ttl: "10m",
     });
     accessToken.addGrant({
@@ -120,8 +131,19 @@ const socketToRoom = new Map();
 io.on("connection", (socket) => {
   console.log(`[Socket Connected] ${socket.id}`);
 
-  socket.on("join-room", ({ roomId }) => {
-    if (!roomId) return;
+  socket.on("join-room", ({ roomId, name }) => {
+    if (
+      typeof roomId !== "string" ||
+      !/^[a-zA-Z0-9_-]{1,64}$/.test(roomId) ||
+      typeof name !== "string" ||
+      !name.trim() ||
+      name.trim().length > 32 ||
+      /[\u0000-\u001f\u007f]/.test(name)
+    ) {
+      socket.emit("join-error", { message: "Enter a display name between 1 and 32 characters." });
+      return;
+    }
+    const participantName = name.trim().replace(/\s+/g, " ");
 
     // Leave any previous room
     leaveCurrentRoom(socket);
@@ -135,6 +157,7 @@ io.on("connection", (socket) => {
     }
 
     socket.join(roomId);
+    socket.data.participantName = participantName;
     socketToRoom.set(socket.id, roomId);
 
     // Get the other user in the room if one exists
@@ -151,7 +174,11 @@ io.on("connection", (socket) => {
     console.log(`[Join Room] ${socket.id} joined room "${roomId}" (Users: ${roomSize + 1})`);
 
     // Notify current user they joined successfully
-    socket.emit("joined-room", { roomId, otherUser: otherUserId });
+    socket.emit("joined-room", {
+      roomId,
+      otherUser: otherUserId,
+      participantName,
+    });
 
     // If an existing user was already in the room, tell them a peer arrived
     if (otherUserId) {
@@ -161,15 +188,18 @@ io.on("connection", (socket) => {
 
   // Relay sign detection / live caption to room peer
   socket.on("sign-detected", ({ roomId, text }) => {
-    if (roomId) {
+    if (roomId && socketToRoom.get(socket.id) === roomId) {
       socket.to(roomId).emit("remote-sign-detected", { text });
     }
   });
 
   // Relay transcript messages to room peer
   socket.on("transcript-message", ({ roomId, message }) => {
-    if (roomId) {
-      socket.to(roomId).emit("remote-transcript-message", { message });
+    if (roomId && socketToRoom.get(socket.id) === roomId) {
+      socket.to(roomId).emit("remote-transcript-message", {
+        message,
+        participantName: socket.data.participantName,
+      });
     }
   });
 
