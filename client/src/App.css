@@ -771,6 +771,19 @@ input:focus-visible {
   color: var(--sc-text-main);
 }
 
+.sc-btn-caption-submit {
+  border-color: transparent;
+  background: linear-gradient(135deg, #7968f4, #5b4ada);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(103, 85, 232, 0.2);
+}
+
+.sc-btn-caption-submit:hover:not(:disabled) {
+  background: linear-gradient(135deg, #8879ff, #5a49dc);
+  color: #fff;
+  box-shadow: 0 8px 18px rgba(103, 85, 232, 0.28);
+}
+
 .sc-captions-label {
   font-size: 14px;
   font-weight: 600;

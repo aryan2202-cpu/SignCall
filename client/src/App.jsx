@@ -424,6 +424,13 @@ export default function App() {
 
           const now = Date.now();
           if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            if (
+              gestureAutoSubmittedRef.current &&
+              gestureFramesRef.current.length > 0
+            ) {
+              gestureAutoSubmittedRef.current = false;
+              setErrorMessage("");
+            }
             lastHandDetectedAtRef.current = now;
 
             for (const landmarks of results.multiHandLandmarks) {
@@ -1339,7 +1346,7 @@ export default function App() {
                           <button
                             type="button"
                             onClick={finalizeSignedSentence}
-                            className="sc-btn-caption-tool"
+                            className={`sc-btn-caption-tool ${isInterpretingGestures ? "" : "sc-btn-caption-submit"}`}
                             title="Finish signing and ask Gemini to interpret the camera frames"
                             disabled={isInterpretingGestures}
                           >
@@ -1372,7 +1379,7 @@ export default function App() {
                         </>
                       ) : gestureFrameCount > 0 ? (
                         <span className="sc-signing-live-word">
-                          Gesture sequence captured. Finish or pause for Gemini to transcribe it.
+                          Captured. Tap Finish & reply, or pause briefly for automatic transcription.
                         </span>
                       ) : (
                         <span className="sc-signing-empty">
