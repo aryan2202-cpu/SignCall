@@ -140,10 +140,12 @@ export async function interpretGestures({
         "A static open palm is not by itself a wave or Hello: use Hello only when the sequence visibly shows a wave or the context clearly supports that meaning.",
         "Support both sign-language signs and familiar casual, social, or internet gestures, including less common ones. Do not restrict interpretation to a preset vocabulary; describe the visible gesture plainly when its intended meaning is uncertain.",
         "Do not assume a sign language or invent a translation. When the movement or hand shape is unclear, say so instead of guessing.",
-        "Return a concise English transcript of the best-supported meaning or visible gesture and a relevant, respectful conversational reply.",
+        "Separately describe the visible facial expression in a few words. Mention observable cues such as smiling, frowning, or raised eyebrows, and only cautiously say it appears happy, sad, frustrated, or surprised when clearly supported.",
+        "Do not claim to know the person's true feelings, intent, personality, or mental state from their face. If the face is not visible or the expression is ambiguous, return 'Not clearly visible'. Do not let the facial expression alone determine the gesture transcript.",
+        "Return a concise English transcript of the best-supported meaning or visible gesture, the separate visible-expression note, and a relevant, respectful conversational reply that takes the cue into account without assuming how the person feels.",
         "Keep the reply to one short sentence so it can be returned quickly.",
         "This is an experimental vision model, not certified sign-language translation. Never claim certainty you do not have.",
-        'Return only JSON matching {"transcript":"...","reply":"..."}',
+        'Return only JSON matching {"transcript":"...","expression":"...","reply":"..."}',
       ].join(" "),
     },
   ];
@@ -186,9 +188,10 @@ export async function interpretGestures({
             type: "OBJECT",
             properties: {
               transcript: { type: "STRING" },
+              expression: { type: "STRING" },
               reply: { type: "STRING" },
             },
-            required: ["transcript", "reply"],
+            required: ["transcript", "expression", "reply"],
           },
         },
       }),
@@ -243,6 +246,8 @@ export async function interpretGestures({
   if (
     typeof result.transcript !== "string" ||
     !result.transcript.trim() ||
+    typeof result.expression !== "string" ||
+    !result.expression.trim() ||
     typeof result.reply !== "string" ||
     !result.reply.trim()
   ) {
@@ -251,6 +256,7 @@ export async function interpretGestures({
 
   return {
     transcript: result.transcript.trim(),
+    expression: result.expression.trim(),
     reply: result.reply.trim(),
     model: selectedModel,
   };

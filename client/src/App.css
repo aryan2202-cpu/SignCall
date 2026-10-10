@@ -791,6 +791,14 @@ input:focus-visible {
   display: block;
   margin-top: 6px;
   color: var(--sc-text-dark);
+}
+
+.sc-caption-expression,
+.sc-transcript-detail {
+  display: block;
+  margin-top: 6px;
+  color: var(--sc-text-muted);
+  font-size: 0.82em;
   font-size: 0.75em;
   font-weight: 500;
 }

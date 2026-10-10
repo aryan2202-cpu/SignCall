@@ -295,11 +295,13 @@ export default function App() {
         }
         if (
           typeof result.transcript !== "string" ||
+          typeof result.expression !== "string" ||
           typeof result.reply !== "string" ||
           !result.transcript.trim() ||
+          !result.expression.trim() ||
           !result.reply.trim()
         ) {
-          throw new Error("Gesture AI returned an incomplete transcript or reply.");
+          throw new Error("Gesture AI returned an incomplete transcript, expression note, or reply.");
         }
 
         const time = new Date().toLocaleTimeString([], {
@@ -312,6 +314,7 @@ export default function App() {
           mode: "AI Gesture Transcript",
           time,
           text: result.transcript.trim(),
+          detail: `Visible facial expression: ${result.expression.trim()}`,
           bubbleBg: "#EAF0FF",
           textColor: "#111827",
         };
@@ -329,9 +332,12 @@ export default function App() {
         setTranscript((prev) => [...prev, transcriptEntry, aiEntry]);
         setLatestGestureCaption({
           transcript: transcriptEntry.text,
+          expression: result.expression.trim(),
           reply: aiEntry.text,
         });
-        speakText(`Transcript: ${transcriptEntry.text}. ${aiEntry.text}`);
+        speakText(
+          `Transcript: ${transcriptEntry.text}. Visible facial expression: ${result.expression.trim()}. ${aiEntry.text}`
+        );
 
         if (socketRef.current && currentRoomRef.current) {
           for (const message of [transcriptEntry, aiEntry]) {
@@ -891,7 +897,14 @@ export default function App() {
   // Download Transcript as text
   const handleDownloadTranscript = () => {
     const textContent = transcript
-      .map((t) => `[${t.time}] ${t.who} (${t.mode}): ${t.text}`)
+      .map((t) =>
+        [
+          `[${t.time}] ${t.who} (${t.mode}): ${t.text}`,
+          t.detail ? `  ${t.detail}` : null,
+        ]
+          .filter(Boolean)
+          .join("\n")
+      )
       .join("\n");
     const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -1335,6 +1348,9 @@ export default function App() {
                           <span className="sc-signing-live-word">
                             {latestGestureCaption.transcript}
                           </span>
+                          <span className="sc-caption-expression">
+                            Visible expression: {latestGestureCaption.expression}
+                          </span>
                           <span className="sc-caption-reply">
                             {latestGestureCaption.reply}
                           </span>
@@ -1580,6 +1596,9 @@ export default function App() {
                         }}
                       >
                         {item.text}
+                        {item.detail && (
+                          <span className="sc-transcript-detail">{item.detail}</span>
+                        )}
                       </p>
                     </li>
                   ))}

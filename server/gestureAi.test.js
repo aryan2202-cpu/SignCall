@@ -24,12 +24,16 @@ function availableModels(names = [
   };
 }
 
-function successfulGeneration(transcript = "Namaste.", reply = "Namaste!") {
+function successfulGeneration(
+  transcript = "Namaste.",
+  reply = "Namaste!",
+  expression = "Smiling; appears happy"
+) {
   return {
     candidates: [
       {
         content: {
-          parts: [{ text: JSON.stringify({ transcript, reply }) }],
+          parts: [{ text: JSON.stringify({ transcript, expression, reply }) }],
         },
       },
     ],
@@ -78,6 +82,7 @@ test("discovers an available model and sends the camera frames to it", async () 
   });
 
   assert.equal(result.transcript, "Namaste.");
+  assert.equal(result.expression, "Smiling; appears happy");
   assert.equal(result.reply, "Namaste!");
   assert.equal(result.model, "gemini-3.5-flash-lite");
   assert.equal(requests.length, 2);
@@ -93,9 +98,15 @@ test("discovers an available model and sends the camera frames to it", async () 
   assert.match(requestBody.contents[0].parts[0].text, /do not restrict interpretation to a preset vocabulary/i);
   assert.match(requestBody.contents[0].parts[0].text, /static open palm is not by itself a wave or Hello/);
   assert.match(requestBody.contents[0].parts[0].text, /casual, social, or internet gestures/);
+  assert.match(requestBody.contents[0].parts[0].text, /Do not claim to know the person's true feelings/);
   assert.doesNotMatch(requestBody.contents[0].parts[0].text, /Namaste/);
   assert.equal(requestBody.generationConfig.responseMimeType, "application/json");
   assert.equal(requestBody.generationConfig.maxOutputTokens, 96);
+  assert.deepEqual(requestBody.generationConfig.responseSchema.required, [
+    "transcript",
+    "expression",
+    "reply",
+  ]);
 });
 
 test("prefers a configured model only when the API key has access to it", async () => {

@@ -71,7 +71,9 @@ frames to Gemini. The client samples clear, time-ordered frames to help the AI
 distinguish movement (such as a wave) from a static hand pose.
 Before joining or creating a room, each participant enters a display name; the
 name is shown on their participant tile, in the participant list, and alongside
-their transcript entries.
+their transcript entries. Gesture interpretation also reports visible facial
+expression cues when clear, without treating them as certain knowledge of a
+person's feelings.
 
 ## Deploy publicly with Render
 
