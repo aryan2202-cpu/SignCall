@@ -1155,80 +1155,81 @@ export default function App() {
                   </button>
                 )}
 
-                {/* Floating White Caption Card */}
-                {captionsOn && (
-                  <div className="sc-captions-overlay">
-                    <div
-                      role="status"
-                      aria-live="polite"
-                      className="sc-captions-card"
-                    >
-                      <div className="sc-captions-card-top">
-                        <span className="sc-captions-label">
-                          {isYouOnMainStage ? "You, signing" : "Peer, signing"}
-                          {isInterpretingGestures
-                            ? " · Gemini is interpreting the gesture sequence..."
-                            : ` · ${gestureFrameCount} of ${MAX_GESTURE_FRAMES} representative frames captured for Gemini`}
-                        </span>
-                        <div className="sc-captions-card-actions">
-                          {gestureFrameCount > 0 && (
-                            <button
-                              type="button"
-                              onClick={handleClearGestureFrames}
-                              className="sc-btn-caption-tool"
-                              title="Discard captured gesture frames"
-                            >
-                              <Trash2 className="sc-icon-xs" />
-                              <span>Clear</span>
-                            </button>
-                          )}
-                          {(gestureFrameCount > 0 || isInterpretingGestures) && (
-                            <button
-                              type="button"
-                              onClick={finalizeSignedSentence}
-                              className="sc-btn-caption-tool"
-                              title="Finish signing and ask Gemini to interpret the camera frames"
-                              disabled={isInterpretingGestures}
-                            >
-                              <Sparkles className="sc-icon-xs" />
-                              <span>{isInterpretingGestures ? "Interpreting..." : "Finish & reply"}</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <p
-                        className="sc-captions-text"
-                        style={{ fontSize: `${captionPx}px` }}
-                      >
-                        {isInterpretingGestures ? (
-                          <span className="sc-signing-live-word">
-                            Gemini is interpreting your signed message...
-                          </span>
-                        ) : latestGestureCaption ? (
-                          <>
-                            <span className="sc-signing-live-word">
-                              {latestGestureCaption.transcript}
-                            </span>
-                            <span className="sc-caption-reply">
-                              {latestGestureCaption.reply}
-                            </span>
-                          </>
-                        ) : gestureFrameCount > 0 ? (
-                          <span className="sc-signing-live-word">
-                            Gesture sequence captured. Finish or pause for Gemini to transcribe it.
-                          </span>
-                        ) : (
-                          <span className="sc-signing-empty">
-                            Sign naturally in view of the camera. Gemini interprets the sequence, not a fixed sign list...
-                          </span>
-                        )}
-                        <span className="sc-caret" />
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
+
+              {/* Captions sit below the video so they never cover either camera. */}
+              {captionsOn && (
+                <div className="sc-captions-overlay">
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="sc-captions-card"
+                  >
+                    <div className="sc-captions-card-top">
+                      <span className="sc-captions-label">
+                        {isYouOnMainStage ? "You, signing" : "Peer, signing"}
+                        {isInterpretingGestures
+                          ? " · Gemini is interpreting the gesture sequence..."
+                          : ` · ${gestureFrameCount} of ${MAX_GESTURE_FRAMES} representative frames captured for Gemini`}
+                      </span>
+                      <div className="sc-captions-card-actions">
+                        {gestureFrameCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={handleClearGestureFrames}
+                            className="sc-btn-caption-tool"
+                            title="Discard captured gesture frames"
+                          >
+                            <Trash2 className="sc-icon-xs" />
+                            <span>Clear</span>
+                          </button>
+                        )}
+                        {(gestureFrameCount > 0 || isInterpretingGestures) && (
+                          <button
+                            type="button"
+                            onClick={finalizeSignedSentence}
+                            className="sc-btn-caption-tool"
+                            title="Finish signing and ask Gemini to interpret the camera frames"
+                            disabled={isInterpretingGestures}
+                          >
+                            <Sparkles className="sc-icon-xs" />
+                            <span>{isInterpretingGestures ? "Interpreting..." : "Finish & reply"}</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <p
+                      className="sc-captions-text"
+                      style={{ fontSize: `${Math.min(captionPx, 22)}px` }}
+                    >
+                      {isInterpretingGestures ? (
+                        <span className="sc-signing-live-word">
+                          Gemini is interpreting your signed message...
+                        </span>
+                      ) : latestGestureCaption ? (
+                        <>
+                          <span className="sc-signing-live-word">
+                            {latestGestureCaption.transcript}
+                          </span>
+                          <span className="sc-caption-reply">
+                            {latestGestureCaption.reply}
+                          </span>
+                        </>
+                      ) : gestureFrameCount > 0 ? (
+                        <span className="sc-signing-live-word">
+                          Gesture sequence captured. Finish or pause for Gemini to transcribe it.
+                        </span>
+                      ) : (
+                        <span className="sc-signing-empty">
+                          Sign naturally in view of the camera. Gemini interprets the sequence, not a fixed sign list...
+                        </span>
+                      )}
+                      <span className="sc-caret" />
+                    </p>
+                  </div>
+                </div>
+              )}
 
               {/* Real 2-Person Filmstrip */}
               <div className="sc-strip">
