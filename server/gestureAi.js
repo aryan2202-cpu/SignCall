@@ -153,8 +153,10 @@ export async function interpretGestures({
     {
       text: [
         "Interpret these time-ordered images of a person's hands, body, and face. Identify the specific sign or casual/social gesture from hand shape, orientation, location, motion, and context; support an open vocabulary and do not default to Hello. A static open palm is not a wave. If unclear, describe what is visible rather than inventing a translation.",
-        "Also describe the visible facial expression briefly; if unclear or not visible, say 'Not clearly visible'. Describe observable cues, not certain feelings or mental states, and do not use facial expression alone to infer the gesture.",
-        "Return a very concise transcript, expression note, and one short relevant reply. This is experimental, not certified sign-language translation.",
+        "Carefully inspect the face in every frame, not just the hands. Explicitly consider anger: lowered or knitted brows, narrowed eyes, a tense jaw, or pressed lips can indicate an angry-looking expression. Also consider happiness, sadness, surprise, fear, and confusion from visible facial cues.",
+        "In the expression field, name the best-supported visible emotion (for example 'Angry-looking: brows lowered and lips pressed') rather than only listing facial features. If the face is too small, obscured, or ambiguous, say 'Not clearly visible' instead of guessing.",
+        "Use the apparent emotion as context for a considerate, empathetic reply to the sign, but do not change the sign transcript based only on the face. Describe an apparent expression, not certain knowledge of the person's true feelings or mental state.",
+        "Return a very concise transcript, expression, and one short relevant reply. This is experimental, not certified sign-language translation.",
         'Return only JSON matching {"transcript":"...","expression":"...","reply":"..."}',
       ].join(" "),
     },

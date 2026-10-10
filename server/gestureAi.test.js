@@ -97,7 +97,10 @@ test("discovers an available model and sends the camera frames to it", async () 
   assert.equal(requestBody.contents[0].parts[2].inline_data.data, "AQID");
   assert.match(requestBody.contents[0].parts[0].text, /support an open vocabulary/i);
   assert.match(requestBody.contents[0].parts[0].text, /A static open palm is not a wave/);
-  assert.match(requestBody.contents[0].parts[0].text, /observable cues, not certain feelings or mental states/i);
+  assert.match(requestBody.contents[0].parts[0].text, /Carefully inspect the face in every frame, not just the hands/);
+  assert.match(requestBody.contents[0].parts[0].text, /Explicitly consider anger/);
+  assert.match(requestBody.contents[0].parts[0].text, /use the apparent emotion as context/i);
+  assert.match(requestBody.contents[0].parts[0].text, /not certain knowledge of the person's true feelings/i);
   assert.doesNotMatch(requestBody.contents[0].parts[0].text, /Namaste/);
   assert.equal(requestBody.generationConfig.responseMimeType, "application/json");
   assert.equal(requestBody.generationConfig.maxOutputTokens, 160);
