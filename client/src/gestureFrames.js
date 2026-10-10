@@ -1,4 +1,4 @@
-export const MAX_GESTURE_FRAMES = 12;
+export const MAX_GESTURE_FRAMES = 8;
 
 export function addGestureFrame(frames, seenCount, frame, random = Math.random) {
   const nextSeenCount = seenCount + 1;

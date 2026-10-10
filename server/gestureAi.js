@@ -9,7 +9,7 @@ const MODEL_PREFERENCES = [
   "gemini-2.5-flash",
   "gemini-2.0-flash",
 ];
-const MODEL_CACHE_TTL_MS = 10 * 60 * 1000;
+const MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const availableModelsCache = new Map();
 const availableModelsRequests = new Map();
 
@@ -140,6 +140,7 @@ export async function interpretGestures({
         "Use motion between frames, hand shape, orientation, position, facial expression, and context. Do not assume a particular sign language or silently substitute spoken-language gestures for signs.",
         "Recognize culturally meaningful greetings when visible. In particular, palms pressed together in front of the chest or face is commonly the Indian greeting Namaste; do not label that pose Hello or a waving gesture unless the frames show a wave.",
         "Return the clearest concise English transcript you can infer and a relevant, respectful conversational reply.",
+        "Keep the reply to one short sentence so it can be returned quickly.",
         "Do not invent words when the meaning is unclear. State that it is unclear in the transcript and ask for repetition or clarification in the reply.",
         "This is an experimental vision model, not certified sign-language translation. Never claim certainty you do not have.",
         'Return only JSON matching {"transcript":"...","reply":"..."}',
@@ -179,6 +180,7 @@ export async function interpretGestures({
         contents: [{ role: "user", parts }],
         generationConfig: {
           temperature: 0.2,
+          maxOutputTokens: 160,
           responseMimeType: "application/json",
           responseSchema: {
             type: "OBJECT",
@@ -255,8 +257,8 @@ export async function interpretGestures({
 }
 
 export function validateGestureFrames(frames) {
-  if (!Array.isArray(frames) || frames.length < 1 || frames.length > 12) {
-    return "Send between 1 and 12 gesture frames.";
+  if (!Array.isArray(frames) || frames.length < 1 || frames.length > 8) {
+    return "Send between 1 and 8 gesture frames.";
   }
 
   for (const frame of frames) {

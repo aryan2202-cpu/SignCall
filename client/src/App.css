@@ -785,7 +785,7 @@ input:focus-visible {
 
 .sc-strip {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 16px;
 }
 
@@ -1396,7 +1396,7 @@ input:focus-visible {
   }
 
   .sc-strip {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 
   .sc-sidebar {
@@ -1411,7 +1411,7 @@ input:focus-visible {
   }
 
   .sc-strip {
-    grid-template-columns: minmax(0, 1fr) !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
   .sc-call-panel {

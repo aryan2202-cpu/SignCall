@@ -10,6 +10,7 @@ import cors from "cors";
 import { interpretGestures, validateGestureFrames } from "./gestureAi.js";
 
 const app = express();
+const MAX_ROOM_PARTICIPANTS = 5;
 app.use(cors());
 app.use(express.json({ limit: "9mb" }));
 
@@ -75,7 +76,7 @@ app.post("/api/livekit/token", async (req, res) => {
     });
     accessToken.roomConfig = new RoomConfiguration({
       name: roomId,
-      maxParticipants: 2,
+      maxParticipants: MAX_ROOM_PARTICIPANTS,
     });
 
     res.json({
@@ -128,7 +129,7 @@ io.on("connection", (socket) => {
     const room = io.sockets.adapter.rooms.get(roomId);
     const roomSize = room ? room.size : 0;
 
-    if (roomSize >= 2) {
+    if (roomSize >= MAX_ROOM_PARTICIPANTS) {
       socket.emit("room-full", { roomId });
       return;
     }

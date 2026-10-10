@@ -36,6 +36,39 @@ import {
 } from "./gestureFrames";
 import "./App.css";
 
+function ParticipantMedia({ participant, className }) {
+  const videoRef = useRef(null);
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = participant.videoStream;
+      videoRef.current.play().catch((error) => {
+        console.warn("Remote video autoplay was blocked:", error);
+      });
+    }
+    if (audioRef.current) {
+      audioRef.current.srcObject = participant.audioStream;
+      audioRef.current.play().catch((error) => {
+        console.warn("Remote audio autoplay was blocked:", error);
+      });
+    }
+  }, [participant]);
+
+  return (
+    <>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        className={className}
+      />
+      <audio ref={audioRef} autoPlay />
+    </>
+  );
+}
+
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL ||
   (typeof window !== "undefined"
@@ -65,6 +98,7 @@ export default function App() {
   const [captionPx, setCaptionPx] = useState(28);
   const [showSettings, setShowSettings] = useState(false);
   const [pinMainUser, setPinMainUser] = useState("auto"); // "auto", "you", "peer"
+  const [pinnedParticipantId, setPinnedParticipantId] = useState(null);
 
   // Sign & Caption state
   const [liveGestureLabel, setLiveGestureLabel] = useState(null);
@@ -88,7 +122,7 @@ export default function App() {
 
   // Video streams
   const [localStream, setLocalStream] = useState(null);
-  const [remoteStream, setRemoteStream] = useState(null);
+  const [remoteParticipants, setRemoteParticipants] = useState([]);
 
   // Refs
   const socketRef = useRef(null);
@@ -99,7 +133,6 @@ export default function App() {
 
   // DOM refs
   const localVideoRef = useRef(null);
-  const remoteVideoRef = useRef(null);
   const canvasRef = useRef(null);
   const frameCaptureCanvasRef = useRef(null);
   const transcriptEndRef = useRef(null);
@@ -119,15 +152,6 @@ export default function App() {
       node.play().catch((err) => console.log("Local video autoplay caught:", err));
     }
   }, []);
-
-  // Callback ref for remote video
-  const setRemoteVideoNode = useCallback((node) => {
-    remoteVideoRef.current = node;
-    if (node && remoteStream) {
-      node.srcObject = remoteStream;
-      node.play().catch((err) => console.log("Remote video autoplay caught:", err));
-    }
-  }, [remoteStream]);
 
   // Scroll transcript to bottom
   useEffect(() => {
@@ -312,13 +336,6 @@ export default function App() {
     }
   }, [localStream, currentRoom]);
 
-  useEffect(() => {
-    if (remoteVideoRef.current && remoteStream) {
-      remoteVideoRef.current.srcObject = remoteStream;
-      remoteVideoRef.current.play().catch(() => {});
-    }
-  }, [remoteStream, currentRoom]);
-
   // =========================================================================
   // MediaPipe Hands Detection & Gesture Recognition Loop (Smoothed & Debounced)
   // =========================================================================
@@ -416,9 +433,9 @@ export default function App() {
             noHandFramesRef.current += 1;
             setLiveGestureLabel(null);
 
-            // Auto-finalize the phrase after ~2.5s without a detected hand.
+            // Auto-finalize after a short pause so the result arrives sooner.
             if (
-              noHandFramesRef.current === 30 &&
+              noHandFramesRef.current === 14 &&
               gestureFramesRef.current.length > 0
             ) {
               finalizeSignedSentence();
@@ -498,22 +515,36 @@ export default function App() {
     const room = new Room({ adaptiveStream: true, dynacast: true });
     liveKitRoomRef.current = room;
     const syncRemoteMedia = () => {
-      const tracks = [];
-      for (const participant of room.remoteParticipants.values()) {
+      const participants = Array.from(
+        room.remoteParticipants.values(),
+        (participant, index) => {
+        const videoTracks = [];
+        const audioTracks = [];
         for (const publication of participant.trackPublications.values()) {
-          if (publication.track) tracks.push(publication.track.mediaStreamTrack);
+          if (!publication.track) continue;
+          const mediaTrack = publication.track.mediaStreamTrack;
+          if (publication.track.kind === Track.Kind.Video) videoTracks.push(mediaTrack);
+          if (publication.track.kind === Track.Kind.Audio) audioTracks.push(mediaTrack);
         }
-      }
-      setRemoteStream(tracks.length ? new MediaStream(tracks) : null);
+          return {
+            identity: participant.identity,
+            name: participant.name || `Guest ${index + 1}`,
+            videoStream: new MediaStream(videoTracks),
+            audioStream: new MediaStream(audioTracks),
+          };
+        }
+      );
+      setRemoteParticipants(participants);
+      setPeerConnected(room.remoteParticipants.size > 0);
     };
 
     room.on(RoomEvent.ParticipantConnected, () => {
       setPeerConnected(true);
       setStatusMessage("Peer joined. Connecting media...");
+      syncRemoteMedia();
     });
     room.on(RoomEvent.ParticipantDisconnected, () => {
       syncRemoteMedia();
-      setPeerConnected(room.remoteParticipants.size > 0);
       if (room.remoteParticipants.size === 0) {
         setStatusMessage("Peer left. Waiting for someone to join...");
       }
@@ -527,8 +558,9 @@ export default function App() {
     room.on(RoomEvent.Disconnected, () => {
       if (liveKitRoomRef.current === room) {
         liveKitRoomRef.current = null;
-        setRemoteStream(null);
+        setRemoteParticipants([]);
         setPeerConnected(false);
+        setStatusMessage("Disconnected. Waiting to reconnect...");
       }
     });
 
@@ -571,7 +603,7 @@ export default function App() {
     });
 
     socket.on("room-full", ({ roomId }) => {
-      setErrorMessage(`Room "${roomId}" is full (maximum 2 participants).`);
+      setErrorMessage(`Room "${roomId}" is full (maximum 5 participants).`);
       setCurrentRoom(null);
     });
 
@@ -597,9 +629,9 @@ export default function App() {
     });
 
     socket.on("user-left", () => {
-      setStatusMessage("Peer left. Waiting for someone to join...");
-      setPeerConnected(false);
-      setRemoteStream(null);
+      if (!liveKitRoomRef.current?.remoteParticipants.size) {
+        setStatusMessage("Participant left. Waiting for others...");
+      }
     });
 
     // Remote sign gesture received
@@ -670,7 +702,7 @@ export default function App() {
     liveKitRoomRef.current?.disconnect();
     liveKitRoomRef.current = null;
     stopLocalMedia();
-    setRemoteStream(null);
+    setRemoteParticipants([]);
     setCurrentRoom(null);
     setPeerConnected(false);
     setIsMicMuted(false);
@@ -795,7 +827,11 @@ export default function App() {
 
   // Determine whether to show You or Peer in the main stage
   const isYouOnMainStage =
-    pinMainUser === "you" || !remoteStream || !peerConnected;
+    pinMainUser === "you" || remoteParticipants.length === 0 || !peerConnected;
+  const mainStageParticipant = isYouOnMainStage
+    ? null
+    : remoteParticipants.find((participant) => participant.identity === pinnedParticipantId) ||
+      remoteParticipants[0];
 
   return (
     <div className="sc-app-wrapper">
@@ -1004,7 +1040,7 @@ export default function App() {
 
                 <div className="sc-secure-note">
                   <ShieldCheck className="sc-icon-xs" />
-                  <span>LiveKit video calls. Share your room code to invite one other person.</span>
+                  <span>LiveKit video calls. Invite up to four others (five people total).</span>
                 </div>
               </div>
 
@@ -1115,10 +1151,8 @@ export default function App() {
                   </div>
                 ) : (
                   <div className="sc-main-stage-wrapper">
-                    <video
-                      ref={setRemoteVideoNode}
-                      autoPlay
-                      playsInline
+                    <ParticipantMedia
+                      participant={mainStageParticipant}
                       className="sc-video-fullscreen"
                     />
                   </div>
@@ -1231,40 +1265,9 @@ export default function App() {
                 </div>
               )}
 
-              {/* Real 2-Person Filmstrip */}
+              {/* Participant filmstrip */}
               <div className="sc-strip">
-                {isYouOnMainStage ? (
-                  peerConnected && remoteStream ? (
-                    <div className="sc-strip-tile tile-peer" onClick={togglePin}>
-                      <video
-                        ref={setRemoteVideoNode}
-                        autoPlay
-                        playsInline
-                        className="sc-video-thumb"
-                      />
-                      <span className="sc-tile-name">Peer</span>
-                    </div>
-                  ) : (
-                    <div className="sc-strip-tile tile-waiting">
-                      <div className="sc-waiting-card">
-                        <Users className="sc-icon text-blue" />
-                        <div>
-                          <p className="sc-waiting-title">Waiting for peer to join...</p>
-                          <p className="sc-waiting-code">
-                            Share room code <strong>{currentRoom}</strong>
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={handleCopyCode}
-                          className="sc-btn-copy-mini"
-                        >
-                          {copied ? "✓ Copied" : "Copy Code"}
-                        </button>
-                      </div>
-                    </div>
-                  )
-                ) : (
+                {!isYouOnMainStage && (
                   <div className="sc-strip-tile tile-you" onClick={togglePin}>
                     <video
                       ref={setLocalVideoNode}
@@ -1279,6 +1282,48 @@ export default function App() {
                         {liveGestureLabel}
                       </span>
                     )}
+                  </div>
+                )}
+                {remoteParticipants
+                  .filter(
+                    (participant) =>
+                      isYouOnMainStage ||
+                      participant.identity !== mainStageParticipant?.identity
+                  )
+                  .map((participant) => (
+                    <div
+                      key={participant.identity}
+                      className="sc-strip-tile tile-peer"
+                      onClick={() => {
+                        setPinnedParticipantId(participant.identity);
+                        setPinMainUser("peer");
+                      }}
+                    >
+                      <ParticipantMedia
+                        participant={participant}
+                        className="sc-video-thumb"
+                      />
+                      <span className="sc-tile-name">{participant.name}</span>
+                    </div>
+                  ))}
+                {remoteParticipants.length === 0 && (
+                  <div className="sc-strip-tile tile-waiting">
+                    <div className="sc-waiting-card">
+                      <Users className="sc-icon text-blue" />
+                      <div>
+                        <p className="sc-waiting-title">Waiting for participants...</p>
+                        <p className="sc-waiting-code">
+                          Share room code <strong>{currentRoom}</strong>
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleCopyCode}
+                        className="sc-btn-copy-mini"
+                      >
+                        {copied ? "✓ Copied" : "Copy Code"}
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1373,7 +1418,7 @@ export default function App() {
                 <div className="sc-section-header">
                   <h2 id="sc-people" className="sc-section-title">Participants</h2>
                   <span className="sc-badge-count">
-                    {peerConnected ? "2" : "1"}
+                    {1 + remoteParticipants.length}
                   </span>
                 </div>
 
@@ -1387,18 +1432,20 @@ export default function App() {
                     </span>
                   </li>
 
-                  {/* Peer: Only when connected, otherwise waiting state */}
-                  {peerConnected ? (
-                    <li className="sc-person-item">
-                      <span className="sc-person-avatar avatar-peer">P</span>
-                      <span className="sc-person-name">Peer</span>
+                  {remoteParticipants.map((participant) => (
+                    <li className="sc-person-item" key={participant.identity}>
+                      <span className="sc-person-avatar avatar-peer">
+                        {participant.name.slice(0, 1).toUpperCase()}
+                      </span>
+                      <span className="sc-person-name">{participant.name}</span>
                       <span className="sc-person-status text-blue">Connected</span>
                     </li>
-                  ) : (
+                  ))}
+                  {remoteParticipants.length === 0 && (
                     <li className="sc-person-item waiting-row">
                       <span className="sc-person-avatar avatar-waiting">⏳</span>
                       <div className="sc-waiting-person-text">
-                        <span className="sc-person-name text-muted">Waiting for peer...</span>
+                        <span className="sc-person-name text-muted">Waiting for participants...</span>
                         <span className="sc-room-hint">Room: {currentRoom}</span>
                       </div>
                       <button

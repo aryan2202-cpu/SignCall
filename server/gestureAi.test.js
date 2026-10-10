@@ -46,7 +46,7 @@ function jsonResponse(payload, status = 200) {
 
 test("validates a bounded list of JPEG gesture frames", () => {
   assert.equal(validateGestureFrames(frames), null);
-  assert.match(validateGestureFrames([]), /between 1 and 12/);
+  assert.match(validateGestureFrames([]), /between 1 and 8/);
   assert.match(
     validateGestureFrames([{ mimeType: "image/png", data: "AQID" }]),
     /invalid or too large/
@@ -57,9 +57,9 @@ test("validates a bounded list of JPEG gesture frames", () => {
   );
   assert.match(
     validateGestureFrames(
-      Array.from({ length: 13 }, () => ({ mimeType: "image/jpeg", data: "AQID" }))
+      Array.from({ length: 9 }, () => ({ mimeType: "image/jpeg", data: "AQID" }))
     ),
-    /between 1 and 12/
+    /between 1 and 8/
   );
 });
 
@@ -93,6 +93,7 @@ test("discovers an available model and sends the camera frames to it", async () 
   assert.match(requestBody.contents[0].parts[0].text, /do not restrict interpretation/);
   assert.match(requestBody.contents[0].parts[0].text, /palms pressed together.*Namaste/);
   assert.equal(requestBody.generationConfig.responseMimeType, "application/json");
+  assert.equal(requestBody.generationConfig.maxOutputTokens, 160);
 });
 
 test("prefers a configured model only when the API key has access to it", async () => {
