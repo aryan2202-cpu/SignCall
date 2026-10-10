@@ -239,7 +239,7 @@ test("reports a stalled Gemini request instead of hanging", async () => {
         throw new DOMException("The request timed out", "TimeoutError");
       },
     }),
-    /Gemini request timed out after 15 seconds/
+    /Gemini request timed out after 25 seconds/
   );
 });
 

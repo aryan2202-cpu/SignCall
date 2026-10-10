@@ -285,7 +285,7 @@ export default function App() {
 
     (async () => {
       const controller = new AbortController();
-      const requestTimeout = window.setTimeout(() => controller.abort(), 20_000);
+      const requestTimeout = window.setTimeout(() => controller.abort(), 30_000);
       try {
         const response = await fetch(`${BACKEND_URL}/api/interpret-gestures`, {
           method: "POST",

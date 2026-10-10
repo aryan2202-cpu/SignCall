@@ -10,7 +10,7 @@ const MODEL_PREFERENCES = [
   "gemini-2.0-flash",
 ];
 const MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const GEMINI_REQUEST_TIMEOUT_MS = 15_000;
+const GEMINI_REQUEST_TIMEOUT_MS = 25_000;
 const availableModelsCache = new Map();
 const availableModelsRequests = new Map();
 
@@ -24,7 +24,7 @@ async function fetchGemini(fetchImpl, url, options = {}) {
     return { response, body };
   } catch (error) {
     if (error?.name === "TimeoutError" || error?.name === "AbortError") {
-      throw new Error("Gemini request timed out after 15 seconds.");
+      throw new Error("Gemini request timed out after 25 seconds. Please retry.");
     }
     throw error;
   }
