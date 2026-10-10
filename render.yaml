@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: signspeak
+    runtime: node
+    plan: free
+    buildCommand: npm install --prefix server && npm install --prefix client && npm --prefix client run build
+    startCommand: npm --prefix server start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

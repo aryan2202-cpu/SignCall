@@ -1,0 +1,1453 @@
+/* ==========================================================================
+   SignCall: Minimal Light Design System
+   Exact replication of the meeting reference specification
+   ========================================================================== */
+
+:root {
+  --sc-bg-page: #FFFFFF;
+  --sc-bg-panel: #F4F5F7;
+  --sc-bg-subtle: #EAF0FF;
+  --sc-bg-hover: #E5E7EB;
+
+  /* Accents */
+  --sc-blue: #2F62E8;
+  --sc-blue-hover: #1D45B5;
+  --sc-blue-text: #2349C7;
+  --sc-coral: #E5532F;
+  --sc-coral-hover: #CD4322;
+  --sc-danger: #D92D20;
+
+  /* Neutrals */
+  --sc-text-main: #111827;
+  --sc-text-muted: #6B7280;
+  --sc-text-subtle: #8A919E;
+  --sc-text-dark: #374151;
+
+  /* Tile Backgrounds */
+  --sc-tile-meera: #E6E1DA;
+  --sc-tile-you: #DDE5E1;
+  --sc-tile-kabir: #E3E0EA;
+  --sc-tile-speaker: #DCE1E8;
+
+  /* Typography */
+  --sc-font-ui: 'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+  --sc-font-captions: 'Atkinson Hyperlegible', 'Plus Jakarta Sans', sans-serif;
+}
+
+/* ==========================================================================
+   Base Resets
+   ========================================================================== */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  margin: 0;
+  background-color: var(--sc-bg-page);
+  color: var(--sc-text-main);
+  font-family: var(--sc-font-ui);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--sc-blue);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Caret blinking animation for live captioning */
+@keyframes sc-blink {
+  50% { opacity: 0; }
+}
+
+.sc-caret {
+  display: inline-block;
+  width: 3.5px;
+  height: 0.9em;
+  margin-left: 5px;
+  border-radius: 2px;
+  background: var(--sc-blue);
+  vertical-align: -0.1em;
+  animation: sc-blink 1s steps(1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-caret {
+    animation: none;
+  }
+}
+
+/* ==========================================================================
+   Outer App Wrapper (Desktop Flex Layout)
+   ========================================================================== */
+
+.sc-app-wrapper {
+  width: 100%;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background: var(--sc-bg-page);
+  color: var(--sc-text-main);
+  font-family: var(--sc-font-ui);
+  display: flex;
+  gap: 24px;
+  padding: 24px;
+}
+
+/* ==========================================================================
+   1. Slim Left Icon Rail
+   ========================================================================== */
+
+.sc-rail {
+  flex: 0 0 72px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  padding-top: 6px;
+  user-select: none;
+}
+
+.sc-rail-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--sc-blue);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(47, 98, 232, 0.25);
+  cursor: pointer;
+}
+
+.sc-rail-logo-icon {
+  width: 26px;
+  height: 26px;
+}
+
+.sc-rail-items {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 36px;
+}
+
+.sc-rail-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--sc-text-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sc-rail-btn:hover {
+  background: var(--sc-bg-panel);
+  color: var(--sc-text-main);
+}
+
+.sc-rail-btn.active {
+  background: var(--sc-bg-subtle);
+  color: var(--sc-blue);
+}
+
+/* ==========================================================================
+   2. Main Split Area (Call + Sidebar)
+   ========================================================================== */
+
+.sc-main-split {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+}
+
+/* ==========================================================================
+   Landing / Lobby View (Minimal Light)
+   ========================================================================== */
+
+.sc-landing-card {
+  flex: 1 1 100%;
+  background: var(--sc-bg-panel);
+  border-radius: 28px;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.sc-landing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.sc-landing-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sc-pill-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--sc-blue);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sc-pill-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.sc-landing-title {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.sc-landing-sub {
+  font-size: 14px;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+.sc-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #FFFFFF;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sc-text-muted);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.sc-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.sc-dot.online {
+  background: #10B981;
+}
+
+.sc-dot.offline {
+  background: var(--sc-danger);
+}
+
+.sc-hero-content {
+  max-width: 820px;
+  margin: 2rem auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sc-badge-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--sc-bg-subtle);
+  color: var(--sc-blue-text);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.sc-hero-headline {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 0 0 1.25rem;
+}
+
+.sc-blue-text {
+  color: var(--sc-blue);
+}
+
+.sc-hero-desc {
+  font-size: 18px;
+  color: var(--sc-text-muted);
+  line-height: 1.6;
+  margin: 0 0 2.5rem;
+}
+
+.sc-action-box {
+  width: 100%;
+  background: #FFFFFF;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 8px 28px rgba(17, 24, 39, 0.06);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sc-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.sc-btn-primary {
+  height: 52px;
+  padding: 0 28px;
+  border-radius: 999px;
+  border: none;
+  background: var(--sc-blue);
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(47, 98, 232, 0.25);
+}
+
+.sc-btn-primary:hover:not(:disabled) {
+  background: var(--sc-blue-hover);
+  transform: translateY(-1px);
+}
+
+.sc-divider-text {
+  color: var(--sc-text-subtle);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sc-join-form {
+  display: flex;
+  gap: 8px;
+}
+
+.sc-input-code {
+  height: 52px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: 1px solid #E5E7EB;
+  background: #F9FAFB;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--sc-text-main);
+  outline: none;
+  min-width: 180px;
+}
+
+.sc-btn-secondary {
+  height: 52px;
+  padding: 0 24px;
+  border-radius: 999px;
+  border: none;
+  background: var(--sc-bg-panel);
+  color: var(--sc-text-main);
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sc-btn-secondary:hover:not(:disabled) {
+  background: #E5E7EB;
+}
+
+.sc-secure-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--sc-text-muted);
+  font-size: 13px;
+  margin-top: 0.5rem;
+}
+
+.sc-steps-trio {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  width: 100%;
+  margin-top: 3.5rem;
+}
+
+.sc-step-box {
+  background: #FFFFFF;
+  border-radius: 20px;
+  padding: 24px;
+  text-align: left;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.sc-step-num {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--sc-blue);
+  margin-bottom: 8px;
+}
+
+.sc-step-box h4 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.sc-step-box p {
+  font-size: 14px;
+  color: var(--sc-text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ==========================================================================
+   3. Main In-Call Panel
+   ========================================================================== */
+
+.sc-call-panel {
+  flex: 999 1 600px;
+  min-width: 0;
+  background: var(--sc-bg-panel);
+  border-radius: 28px;
+  padding: 28px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+/* Call Header */
+.sc-call-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 18px;
+}
+
+.sc-btn-circle-white {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: #FFFFFF;
+  color: var(--sc-text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.sc-btn-circle-white:hover {
+  background: var(--sc-bg-hover);
+}
+
+.sc-header-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: auto;
+}
+
+.sc-header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sc-room-heading {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.sc-sign-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--sc-bg-subtle);
+  color: var(--sc-blue-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.sc-sign-pill-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.sc-room-sub {
+  font-size: 15px;
+  color: var(--sc-text-muted);
+}
+
+.sc-btn-invite {
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 999px;
+  border: none;
+  background: #FFFFFF;
+  color: var(--sc-text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.sc-btn-invite:hover {
+  background: var(--sc-bg-hover);
+}
+
+/* ==========================================================================
+   Speaker Viewport (Large Stage View)
+   ========================================================================== */
+
+.sc-speaker-viewport {
+  position: relative;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #0F172A;
+  height: 31rem;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sc-main-stage-wrapper {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0F172A;
+}
+
+.sc-video-fullscreen {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sc-mirror {
+  transform: scaleX(-1);
+}
+
+.sc-landmark-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  transform: scaleX(-1); /* mirrors to align with local webcam */
+  z-index: 15;
+}
+
+.sc-cam-off-avatar {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #1E293B;
+  color: #FFFFFF;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.sc-speaker-badges {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: flex;
+  gap: 8px;
+  z-index: 20;
+}
+
+.sc-badge-dark {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sc-badge-blue {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--sc-blue);
+  color: #FFFFFF;
+  font-size: 15px;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(47, 98, 232, 0.3);
+}
+
+.sc-badge-gesture {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #10B981;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.35);
+  animation: sc-pop 0.3s ease;
+}
+
+@keyframes sc-pop {
+  0% { transform: scale(0.9); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.sc-badge-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.sc-btn-pin {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #FFFFFF;
+  color: var(--sc-text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  z-index: 20;
+}
+
+.sc-btn-pin:hover {
+  background: var(--sc-bg-hover);
+}
+
+/* Floating White Caption Card */
+.sc-captions-overlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 22px;
+  display: flex;
+  justify-content: center;
+  padding: 0 22px;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.sc-captions-card {
+  max-width: 780px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 16px 22px;
+  box-shadow: 0 8px 28px rgba(17, 24, 39, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.sc-captions-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sc-captions-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sc-btn-caption-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--sc-bg-panel);
+  border: 1px solid #E5E7EB;
+  color: var(--sc-text-muted);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sc-btn-caption-tool:hover {
+  background: #E5E7EB;
+  color: var(--sc-text-main);
+}
+
+.sc-captions-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--sc-text-muted);
+}
+
+.sc-captions-text {
+  margin: 0;
+  font-family: var(--sc-font-captions);
+  line-height: 1.3;
+  font-weight: 700;
+  color: var(--sc-text-main);
+  white-space: pre-wrap;
+}
+
+.sc-caption-reply {
+  display: block;
+  margin-top: 6px;
+  color: var(--sc-text-dark);
+  font-size: 0.75em;
+  font-weight: 500;
+}
+
+.sc-signing-live-word {
+  color: var(--sc-blue);
+  font-weight: 700;
+}
+
+.sc-signing-empty {
+  color: var(--sc-text-muted);
+  font-weight: 400;
+  font-size: 18px;
+}
+
+/* ==========================================================================
+   Filmstrip of Participants (Real 2-Person)
+   ========================================================================== */
+
+.sc-strip {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.sc-strip-tile {
+  position: relative;
+  height: 9rem;
+  border-radius: 18px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: var(--sc-tile-speaker);
+}
+
+.tile-waiting {
+  background: #FFFFFF;
+  border: 1px dashed #D1D5DB;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  cursor: default;
+}
+
+.sc-waiting-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1rem 2rem;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.sc-waiting-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--sc-text-main);
+  margin: 0 0 2px;
+}
+
+.sc-waiting-code {
+  font-size: 13px;
+  color: var(--sc-text-muted);
+  margin: 0;
+}
+
+.sc-waiting-code strong {
+  color: var(--sc-blue);
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.sc-btn-copy-mini {
+  height: 38px;
+  padding: 0 18px;
+  border-radius: 999px;
+  border: 1px solid #E5E7EB;
+  background: var(--sc-bg-subtle);
+  color: var(--sc-blue-text);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sc-btn-copy-mini:hover {
+  background: #D9E4FF;
+}
+
+.sc-video-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sc-tile-name {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(4px);
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 10;
+}
+
+.sc-tile-detected-badge {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--sc-blue);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(47, 98, 232, 0.35);
+  z-index: 10;
+}
+
+/* ==========================================================================
+   Call Controls Toolbar
+   ========================================================================== */
+
+.sc-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.sc-tool-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.sc-tool-btn:hover {
+  transform: translateY(-2px);
+}
+
+.sc-tool-btn.neutral {
+  background: #FFFFFF;
+  color: var(--sc-text-dark);
+}
+
+.sc-tool-btn.neutral:hover {
+  background: var(--sc-bg-hover);
+}
+
+.sc-tool-btn.danger {
+  background: #FFFFFF;
+  color: var(--sc-danger);
+}
+
+.sc-tool-btn.active {
+  background: var(--sc-bg-subtle);
+  color: var(--sc-blue);
+}
+
+.sc-sign-mode-btn {
+  height: 56px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.sc-sign-mode-btn:hover {
+  transform: translateY(-2px);
+}
+
+.sc-sign-mode-btn.active {
+  background: var(--sc-blue);
+  color: #FFFFFF;
+  box-shadow: 0 4px 14px rgba(47, 98, 232, 0.25);
+}
+
+.sc-sign-mode-btn.inactive {
+  background: #FFFFFF;
+  color: var(--sc-blue-text);
+}
+
+.sc-alert-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid #FDA29B;
+  border-radius: 12px;
+  background: #FEF3F2;
+  color: #B42318;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.sc-alert-error button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.sc-btn-leave {
+  height: 58px;
+  padding: 0 34px;
+  border-radius: 999px;
+  border: none;
+  background: var(--sc-coral);
+  color: #FFFFFF;
+  font-size: 19px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(229, 83, 47, 0.25);
+}
+
+.sc-btn-leave:hover {
+  background: var(--sc-coral-hover);
+  transform: translateY(-2px);
+}
+
+/* ==========================================================================
+   4. Right Sidebar: Real Participants & Transcript
+   ========================================================================== */
+
+.sc-sidebar {
+  flex: 1 1 320px;
+  max-width: 400px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  padding-top: 6px;
+}
+
+.sc-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.sc-section-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.sc-badge-count {
+  min-width: 26px;
+  height: 26px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border-radius: 999px;
+  background: var(--sc-blue);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* People List */
+.sc-people-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sc-person-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: transparent;
+}
+
+.sc-person-item.active-user {
+  background: var(--sc-bg-panel);
+}
+
+.sc-person-item.waiting-row {
+  background: #FFFFFF;
+  border: 1px dashed #E5E7EB;
+}
+
+.sc-person-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: var(--sc-text-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.avatar-you {
+  background: var(--sc-tile-you);
+  color: #1F2937;
+}
+
+.avatar-peer {
+  background: var(--sc-bg-subtle);
+  color: var(--sc-blue);
+  font-weight: 700;
+}
+
+.avatar-waiting {
+  background: #F3F4F6;
+  font-size: 16px;
+}
+
+.sc-person-name {
+  font-size: 17px;
+  font-weight: 600;
+  margin-right: auto;
+}
+
+.sc-waiting-person-text {
+  display: flex;
+  flex-direction: column;
+  margin-right: auto;
+}
+
+.sc-room-hint {
+  font-size: 12px;
+  color: var(--sc-text-muted);
+  font-family: ui-monospace, Menlo, monospace;
+}
+
+.sc-btn-copy-inline {
+  background: var(--sc-bg-subtle);
+  color: var(--sc-blue-text);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sc-btn-copy-inline:hover {
+  background: #D9E4FF;
+}
+
+.sc-person-status {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.text-blue { color: var(--sc-blue-text); }
+.text-muted-red { color: #B42318; }
+.text-grey { color: #4B5563; }
+.text-muted { color: var(--sc-text-muted); }
+
+/* Transcript Section */
+.sc-transcript-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  flex-grow: 1;
+}
+
+.sc-transcript-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.sc-link-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  font-size: 15px;
+  color: var(--sc-text-muted);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.sc-link-download:hover {
+  color: var(--sc-blue);
+}
+
+.sc-transcript-feed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.sc-transcript-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sc-transcript-meta {
+  font-size: 14px;
+  color: var(--sc-text-muted);
+}
+
+.sc-transcript-bubble {
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 16px;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+/* Type Instead Input Bar */
+.sc-type-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 20px;
+  border-radius: 999px;
+  background: var(--sc-bg-panel);
+}
+
+.sc-type-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--sc-text-main);
+  outline: none;
+}
+
+.sc-btn-send {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: none;
+  background: var(--sc-blue);
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sc-btn-send:hover:not(:disabled) {
+  background: var(--sc-blue-hover);
+  transform: scale(1.04);
+}
+
+.sc-btn-send:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   5. Settings Modal
+   ========================================================================== */
+
+.sc-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.sc-settings-card {
+  background: #FFFFFF;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 520px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+}
+
+.sc-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.sc-settings-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sc-settings-title-wrap h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.sc-btn-close {
+  background: none;
+  border: none;
+  color: var(--sc-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.sc-btn-close:hover {
+  background: #F3F4F6;
+  color: var(--sc-text-main);
+}
+
+.sc-settings-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sc-setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.sc-setting-label {
+  font-size: 16px;
+  font-weight: 600;
+  display: block;
+}
+
+.sc-setting-hint {
+  font-size: 13px;
+  color: var(--sc-text-muted);
+  margin: 2px 0 0;
+}
+
+.sc-slider-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sc-range-slider {
+  accent-color: var(--sc-blue);
+  width: 140px;
+  cursor: pointer;
+}
+
+.sc-range-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--sc-blue);
+  min-width: 40px;
+}
+
+.sc-toggle-pill {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid #E5E7EB;
+  background: #F9FAFB;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sc-toggle-pill.active {
+  background: var(--sc-bg-subtle);
+  border-color: var(--sc-blue);
+  color: var(--sc-blue-text);
+}
+
+/* ==========================================================================
+   6. Responsive Layout Breakpoints
+   ========================================================================== */
+
+.sc-icon-xs { width: 14px; height: 14px; }
+.sc-icon-sm { width: 18px; height: 18px; }
+.sc-icon { width: 22px; height: 22px; }
+
+@media (max-width: 900px) {
+  .sc-app-wrapper {
+    padding: 16px;
+    gap: 16px;
+  }
+
+  .sc-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .sc-sidebar {
+    max-width: 100%;
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 760px) {
+  .sc-rail {
+    display: none !important;
+  }
+
+  .sc-strip {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .sc-call-panel {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .sc-speaker-viewport {
+    height: 20rem;
+  }
+
+  .sc-toolbar {
+    gap: 8px;
+  }
+
+  .sc-tool-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .sc-sign-mode-btn {
+    height: 48px;
+    padding: 0 16px;
+    font-size: 14px;
+  }
+
+  .sc-btn-leave {
+    height: 50px;
+    padding: 0 22px;
+    font-size: 16px;
+  }
+}
