@@ -135,16 +135,9 @@ export async function interpretGestures({
   const parts = [
     {
       text: [
-        "Interpret these time-ordered camera images of a person's hands, upper body, and visible facial expression.",
-        "Identify the specific sign or gesture shown from its hand shape, orientation, location, motion between frames, facial expression, and context; do not default to Hello or another common greeting.",
-        "A static open palm is not by itself a wave or Hello: use Hello only when the sequence visibly shows a wave or the context clearly supports that meaning.",
-        "Support both sign-language signs and familiar casual, social, or internet gestures, including less common ones. Do not restrict interpretation to a preset vocabulary; describe the visible gesture plainly when its intended meaning is uncertain.",
-        "Do not assume a sign language or invent a translation. When the movement or hand shape is unclear, say so instead of guessing.",
-        "Separately describe the visible facial expression in a few words. Mention observable cues such as smiling, frowning, or raised eyebrows, and only cautiously say it appears happy, sad, frustrated, or surprised when clearly supported.",
-        "Do not claim to know the person's true feelings, intent, personality, or mental state from their face. If the face is not visible or the expression is ambiguous, return 'Not clearly visible'. Do not let the facial expression alone determine the gesture transcript.",
-        "Return a concise English transcript of the best-supported meaning or visible gesture, the separate visible-expression note, and a relevant, respectful conversational reply that takes the cue into account without assuming how the person feels.",
-        "Keep the reply to one short sentence so it can be returned quickly.",
-        "This is an experimental vision model, not certified sign-language translation. Never claim certainty you do not have.",
+        "Interpret these time-ordered images of a person's hands, body, and face. Identify the specific sign or casual/social gesture from hand shape, orientation, location, motion, and context; support an open vocabulary and do not default to Hello. A static open palm is not a wave. If unclear, describe what is visible rather than inventing a translation.",
+        "Also describe the visible facial expression briefly; if unclear or not visible, say 'Not clearly visible'. Describe observable cues, not certain feelings or mental states, and do not use facial expression alone to infer the gesture.",
+        "Return a very concise transcript, expression note, and one short relevant reply. This is experimental, not certified sign-language translation.",
         'Return only JSON matching {"transcript":"...","expression":"...","reply":"..."}',
       ].join(" "),
     },
@@ -182,7 +175,7 @@ export async function interpretGestures({
         contents: [{ role: "user", parts }],
         generationConfig: {
           temperature: 0.2,
-          maxOutputTokens: 96,
+          maxOutputTokens: 64,
           responseMimeType: "application/json",
           responseSchema: {
             type: "OBJECT",
@@ -263,8 +256,8 @@ export async function interpretGestures({
 }
 
 export function validateGestureFrames(frames) {
-  if (!Array.isArray(frames) || frames.length < 1 || frames.length > 8) {
-    return "Send between 1 and 8 gesture frames.";
+  if (!Array.isArray(frames) || frames.length < 1 || frames.length > 4) {
+    return "Send between 1 and 4 gesture frames.";
   }
 
   for (const frame of frames) {

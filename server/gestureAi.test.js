@@ -50,7 +50,7 @@ function jsonResponse(payload, status = 200) {
 
 test("validates a bounded list of JPEG gesture frames", () => {
   assert.equal(validateGestureFrames(frames), null);
-  assert.match(validateGestureFrames([]), /between 1 and 8/);
+  assert.match(validateGestureFrames([]), /between 1 and 4/);
   assert.match(
     validateGestureFrames([{ mimeType: "image/png", data: "AQID" }]),
     /invalid or too large/
@@ -61,9 +61,9 @@ test("validates a bounded list of JPEG gesture frames", () => {
   );
   assert.match(
     validateGestureFrames(
-      Array.from({ length: 9 }, () => ({ mimeType: "image/jpeg", data: "AQID" }))
+      Array.from({ length: 5 }, () => ({ mimeType: "image/jpeg", data: "AQID" }))
     ),
-    /between 1 and 8/
+    /between 1 and 4/
   );
 });
 
@@ -95,13 +95,12 @@ test("discovers an available model and sends the camera frames to it", async () 
   assert.equal(requests[1].options.headers["x-goog-api-key"], "test-discovery-key");
   const requestBody = JSON.parse(requests[1].options.body);
   assert.equal(requestBody.contents[0].parts[2].inline_data.data, "AQID");
-  assert.match(requestBody.contents[0].parts[0].text, /do not restrict interpretation to a preset vocabulary/i);
-  assert.match(requestBody.contents[0].parts[0].text, /static open palm is not by itself a wave or Hello/);
-  assert.match(requestBody.contents[0].parts[0].text, /casual, social, or internet gestures/);
-  assert.match(requestBody.contents[0].parts[0].text, /Do not claim to know the person's true feelings/);
+  assert.match(requestBody.contents[0].parts[0].text, /support an open vocabulary/i);
+  assert.match(requestBody.contents[0].parts[0].text, /A static open palm is not a wave/);
+  assert.match(requestBody.contents[0].parts[0].text, /observable cues, not certain feelings or mental states/i);
   assert.doesNotMatch(requestBody.contents[0].parts[0].text, /Namaste/);
   assert.equal(requestBody.generationConfig.responseMimeType, "application/json");
-  assert.equal(requestBody.generationConfig.maxOutputTokens, 96);
+  assert.equal(requestBody.generationConfig.maxOutputTokens, 64);
   assert.deepEqual(requestBody.generationConfig.responseSchema.required, [
     "transcript",
     "expression",
