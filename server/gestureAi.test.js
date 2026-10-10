@@ -226,6 +226,20 @@ test("does not call Gemini without a server API key", async () => {
   assert.equal(wasCalled, false);
 });
 
+test("reports a stalled Gemini request instead of hanging", async () => {
+  await assert.rejects(
+    interpretGestures({
+      frames,
+      apiKey: "test-timeout-key",
+      fetchImpl: async (_url, options) => {
+        if (!options.method) return jsonResponse(availableModels());
+        throw new DOMException("The request timed out", "TimeoutError");
+      },
+    }),
+    /Gemini request timed out after 15 seconds/
+  );
+});
+
 test("reports model-list errors and malformed generation responses", async () => {
   await assert.rejects(
     interpretGestures({

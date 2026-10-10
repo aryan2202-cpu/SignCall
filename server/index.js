@@ -29,7 +29,11 @@ app.post("/api/interpret-gestures", async (req, res) => {
     });
     res.json(result);
   } catch (error) {
-    const status = error.message.includes("not configured") ? 503 : 502;
+    const status = error.message.includes("not configured")
+      ? 503
+      : error.message.includes("timed out")
+        ? 504
+        : 502;
     console.error("Gesture AI request failed:", error.message);
     res.status(status).json({ error: error.message });
   }

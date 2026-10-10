@@ -10,8 +10,25 @@ const MODEL_PREFERENCES = [
   "gemini-2.0-flash",
 ];
 const MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+const GEMINI_REQUEST_TIMEOUT_MS = 15_000;
 const availableModelsCache = new Map();
 const availableModelsRequests = new Map();
+
+async function fetchGemini(fetchImpl, url, options = {}) {
+  try {
+    const response = await fetchImpl(url, {
+      ...options,
+      signal: AbortSignal.timeout(GEMINI_REQUEST_TIMEOUT_MS),
+    });
+    const body = await response.text();
+    return { response, body };
+  } catch (error) {
+    if (error?.name === "TimeoutError" || error?.name === "AbortError") {
+      throw new Error("Gemini request timed out after 15 seconds.");
+    }
+    throw error;
+  }
+}
 
 async function listAvailableModels(apiKey, fetchImpl) {
   const cacheKey = createHash("sha256").update(apiKey).digest("hex");
@@ -37,13 +54,13 @@ async function listAvailableModels(apiKey, fetchImpl) {
 }
 
 async function fetchAvailableModels(apiKey, fetchImpl) {
-  const response = await fetchImpl(
+  const { response, body: responseBody } = await fetchGemini(
+    fetchImpl,
     "https://generativelanguage.googleapis.com/v1beta/models",
     {
       headers: { "x-goog-api-key": apiKey },
     }
   );
-  const responseBody = await response.text();
   let payload;
   try {
     payload = JSON.parse(responseBody);
@@ -165,7 +182,7 @@ export async function interpretGestures({
     const endpoint = new URL(
       `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidateModel)}:generateContent`
     );
-    response = await fetchImpl(endpoint, {
+    const generation = await fetchGemini(fetchImpl, endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -189,7 +206,8 @@ export async function interpretGestures({
         },
       }),
     });
-    const responseBody = await response.text();
+    response = generation.response;
+    const responseBody = generation.body;
     try {
       payload = JSON.parse(responseBody);
     } catch {

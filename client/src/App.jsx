@@ -169,6 +169,7 @@ export default function App() {
   const gesturePhraseStartedAtRef = useRef(0);
   const gestureCaptureGenerationRef = useRef(0);
   const isCapturingGestureFrameRef = useRef(false);
+  const gestureAutoSubmittedRef = useRef(false);
   const lastHandDetectedAtRef = useRef(0);
   const isInterpretingGesturesRef = useRef(false);
 
@@ -269,6 +270,7 @@ export default function App() {
     }
 
     isInterpretingGesturesRef.current = true;
+    gestureAutoSubmittedRef.current = true;
     setIsInterpretingGestures(true);
     setErrorMessage("");
     const seenCount = gestureFrameSeenCountRef.current;
@@ -282,11 +284,14 @@ export default function App() {
     gesturePhraseStartedAtRef.current = 0;
 
     (async () => {
+      const controller = new AbortController();
+      const requestTimeout = window.setTimeout(() => controller.abort(), 20_000);
       try {
         const response = await fetch(`${BACKEND_URL}/api/interpret-gestures`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ frames }),
+          signal: controller.signal,
         });
         const result = await response.json();
 
@@ -295,14 +300,16 @@ export default function App() {
         }
         if (
           typeof result.transcript !== "string" ||
-          typeof result.expression !== "string" ||
           typeof result.reply !== "string" ||
           !result.transcript.trim() ||
-          !result.expression.trim() ||
           !result.reply.trim()
         ) {
-          throw new Error("Gesture AI returned an incomplete transcript, expression note, or reply.");
+          throw new Error("Gesture AI returned an incomplete transcript or reply.");
         }
+        const expression =
+          typeof result.expression === "string" && result.expression.trim()
+            ? result.expression.trim()
+            : "Not available";
 
         const time = new Date().toLocaleTimeString([], {
           hour: "2-digit",
@@ -314,7 +321,7 @@ export default function App() {
           mode: "AI Gesture Transcript",
           time,
           text: result.transcript.trim(),
-          detail: `Visible facial expression: ${result.expression.trim()}`,
+          detail: `Visible facial expression: ${expression}`,
           bubbleBg: "#EAF0FF",
           textColor: "#111827",
         };
@@ -332,11 +339,11 @@ export default function App() {
         setTranscript((prev) => [...prev, transcriptEntry, aiEntry]);
         setLatestGestureCaption({
           transcript: transcriptEntry.text,
-          expression: result.expression.trim(),
+          expression,
           reply: aiEntry.text,
         });
         speakText(
-          `Transcript: ${transcriptEntry.text}. Visible facial expression: ${result.expression.trim()}. ${aiEntry.text}`
+          `Transcript: ${transcriptEntry.text}. Visible facial expression: ${expression}. ${aiEntry.text}`
         );
 
         if (socketRef.current && currentRoomRef.current) {
@@ -349,7 +356,11 @@ export default function App() {
         }
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Could not interpret the gesture. Please try again.";
+          controller.signal.aborted
+            ? "Gesture interpretation timed out. Your captured frames are saved; press Finish & reply to retry."
+            : error instanceof Error
+              ? error.message
+              : "Could not interpret the gesture. Please try again.";
         setErrorMessage(message);
         gestureFramesRef.current = frames;
         gestureFrameSeenCountRef.current = seenCount;
@@ -357,6 +368,7 @@ export default function App() {
         lastGestureCaptureRef.current = lastCapturedAt;
         gesturePhraseStartedAtRef.current = phraseStartedAt;
       } finally {
+        window.clearTimeout(requestTimeout);
         isInterpretingGesturesRef.current = false;
         setIsInterpretingGestures(false);
       }
@@ -455,6 +467,7 @@ export default function App() {
                       return;
                     }
                     if (gestureFramesRef.current.length === 0) {
+                      gestureAutoSubmittedRef.current = false;
                       gesturePhraseStartedAtRef.current = now;
                       setLatestGestureCaption(null);
                     }
@@ -494,6 +507,7 @@ export default function App() {
 
             if (
               gestureFramesRef.current.length > 0 &&
+              !gestureAutoSubmittedRef.current &&
               now - lastHandDetectedAtRef.current >= 650
             ) {
               finalizeSignedSentence();
@@ -854,6 +868,7 @@ export default function App() {
   const handleClearGestureFrames = () => {
     gestureCaptureGenerationRef.current += 1;
     isCapturingGestureFrameRef.current = false;
+    gestureAutoSubmittedRef.current = false;
     gestureFramesRef.current = [];
     gestureFrameSeenCountRef.current = 0;
     setGestureFrameCount(0);
