@@ -4,7 +4,7 @@ SignSpeak uses the Google Gemini vision API to interpret a time-ordered sample
 of camera frames while you sign, create an English transcript, and generate a
 relevant conversational reply. It does not gate interpretation on a hard-coded
 list of gesture names: Gemini receives hand images directly and interprets the
-sequence when you finish signing or pause. Up to 4 representative frames are
+sequence when you finish signing or pause. Up to 8 representative frames are
 sampled across the whole phrase, including longer phrases, with timing retained
 to provide movement context.
 
@@ -66,7 +66,7 @@ deployment, the production client uses the same origin for its API and
 Socket.IO connection; the LiveKit server must also be reachable by each
 participant.
 Rooms allow up to five total participants. Gesture phrases auto-submit after
-about 0.65 seconds without a detected hand and send up to four representative
+about 0.65 seconds without a detected hand and send up to eight representative
 frames to Gemini. The client samples clear, time-ordered frames to help the AI
 distinguish movement (such as a wave) from a static hand pose.
 If Gemini does not respond, the request now times out instead of remaining in

@@ -192,7 +192,7 @@ export async function interpretGestures({
         contents: [{ role: "user", parts }],
         generationConfig: {
           temperature: 0.2,
-          maxOutputTokens: 64,
+          maxOutputTokens: 160,
           responseMimeType: "application/json",
           responseSchema: {
             type: "OBJECT",
@@ -274,8 +274,8 @@ export async function interpretGestures({
 }
 
 export function validateGestureFrames(frames) {
-  if (!Array.isArray(frames) || frames.length < 1 || frames.length > 4) {
-    return "Send between 1 and 4 gesture frames.";
+  if (!Array.isArray(frames) || frames.length < 1 || frames.length > 8) {
+    return "Send between 1 and 8 gesture frames.";
   }
 
   for (const frame of frames) {
