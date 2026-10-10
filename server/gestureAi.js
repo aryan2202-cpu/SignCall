@@ -11,6 +11,16 @@ const MODEL_PREFERENCES = [
 ];
 const MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const GEMINI_REQUEST_TIMEOUT_MS = 25_000;
+const MAX_HELP_USER_MESSAGE_LENGTH = 1000;
+const MAX_HELP_ASSISTANT_MESSAGE_LENGTH = 4000;
+const HELP_SYSTEM_PROMPT = [
+  "You are the SignCall website help assistant.",
+  "Help first-time visitors and call participants understand how to use this app.",
+  "Features: enter a display name, create a room or join with a room code/invite link, allow camera and microphone access, join a LiveKit video call with up to five participants, use Gemini AI sign/gesture interpretation and visible facial-expression cues, read transcripts and AI replies, read replies aloud, type messages, copy invite links, download transcripts, and adjust accessibility settings such as caption size, voice, and sign detection.",
+  "Gesture interpretation samples camera frames and may take time or make mistakes; users can press Finish & reply or retry saved frames after an error. It is experimental and not certified sign-language translation.",
+  "Give clear, friendly, concise, step-by-step guidance. Do not claim to see the user's screen, access their camera, change settings for them, or perform actions. Do not invent features or deployment/account status. If a user reports a problem, suggest relevant checks and ask for the exact visible error when needed.",
+  "Never ask users to share API keys, passwords, or secrets. For account, billing, or hosting issues, direct them to the appropriate provider dashboard.",
+].join(" ");
 const availableModelsCache = new Map();
 const availableModelsRequests = new Map();
 
@@ -137,6 +147,29 @@ function removeUnavailableModel(apiKey, model) {
   if (cached) {
     cached.models = cached.models.filter((entry) => entry !== model);
   }
+}
+
+export function validateHelpMessages(messages) {
+  if (
+    !Array.isArray(messages) ||
+    messages.length < 1 ||
+    messages.length > 8 ||
+    messages.some(
+      (message) =>
+        !message ||
+        !["user", "assistant"].includes(message.role) ||
+        typeof message.content !== "string" ||
+        !message.content.trim() ||
+        message.content.length >
+          (message.role === "user"
+            ? MAX_HELP_USER_MESSAGE_LENGTH
+            : MAX_HELP_ASSISTANT_MESSAGE_LENGTH)
+    ) ||
+    messages[messages.length - 1]?.role !== "user"
+  ) {
+    return "Send up to 8 valid recent help chat messages, ending with your question.";
+  }
+  return null;
 }
 
 export async function interpretGestures({
@@ -273,6 +306,94 @@ export async function interpretGestures({
     reply: result.reply.trim(),
     model: selectedModel,
   };
+}
+
+export async function answerHelpQuestion({
+  messages,
+  apiKey,
+  model,
+  fetchImpl = fetch,
+}) {
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY is not configured on the server.");
+  }
+  const validationError = validateHelpMessages(messages);
+  if (validationError) throw new Error(validationError);
+
+  const conversation = messages.slice(-8);
+  while (conversation[0]?.role === "assistant") conversation.shift();
+  if (conversation.length === 0 || conversation[conversation.length - 1].role !== "user") {
+    throw new Error("The help conversation must end with your question.");
+  }
+
+  const models = await listAvailableModels(apiKey, fetchImpl);
+  const candidateModels = orderModels(models, model);
+  let response;
+  let payload;
+  let selectedModel;
+
+  for (const candidateModel of candidateModels) {
+    const endpoint = new URL(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(candidateModel)}:generateContent`
+    );
+    const generation = await fetchGemini(fetchImpl, endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": apiKey,
+      },
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: HELP_SYSTEM_PROMPT }],
+        },
+        contents: conversation.map((message) => ({
+          role: message.role === "assistant" ? "model" : "user",
+          parts: [{ text: message.content.trim() }],
+        })),
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 280,
+        },
+      }),
+    });
+    response = generation.response;
+    try {
+      payload = JSON.parse(generation.body);
+    } catch {
+      payload = null;
+    }
+
+    if (response.ok) {
+      selectedModel = candidateModel;
+      break;
+    }
+
+    const detail =
+      typeof payload?.error?.message === "string"
+        ? payload.error.message.slice(0, 500)
+        : "";
+    if (isUnavailableModelError(response.status, detail)) {
+      removeUnavailableModel(apiKey, candidateModel);
+      continue;
+    }
+    throw new Error(
+      `Help assistant request failed (HTTP ${response.status})${detail ? `: ${detail}` : "."}`
+    );
+  }
+
+  if (!response?.ok || !selectedModel) {
+    throw new Error("No available Gemini model could answer the help request.");
+  }
+
+  const answer = payload.candidates?.[0]?.content?.parts
+    ?.map((part) => part.text || "")
+    .join("")
+    .trim();
+  if (!answer) {
+    throw new Error("The help assistant returned an empty answer. Please try again.");
+  }
+
+  return { answer, model: selectedModel };
 }
 
 export function validateGestureFrames(frames) {

@@ -27,6 +27,8 @@ import {
   Download,
   Users,
   Trash2,
+  Bot,
+  CircleHelp,
 } from "lucide-react";
 import { drawHandLandmarks } from "./gestureDetector";
 import {
@@ -131,6 +133,11 @@ export default function App() {
   const [isInterpretingGestures, setIsInterpretingGestures] = useState(false);
   const [gestureFrameCount, setGestureFrameCount] = useState(0);
   const [latestGestureCaption, setLatestGestureCaption] = useState(null);
+  const [helpChatOpen, setHelpChatOpen] = useState(false);
+  const [helpMessages, setHelpMessages] = useState([]);
+  const [helpDraft, setHelpDraft] = useState("");
+  const [isSendingHelpMessage, setIsSendingHelpMessage] = useState(false);
+  const [helpChatError, setHelpChatError] = useState("");
 
   // Live Transcript entries
   const [transcript, setTranscript] = useState([
@@ -153,6 +160,7 @@ export default function App() {
   const socketRef = useRef(null);
   const liveKitRoomRef = useRef(null);
   const localStreamRef = useRef(null);
+  const helpRequestInFlightRef = useRef(false);
   const currentRoomRef = useRef(null);
   currentRoomRef.current = currentRoom;
 
@@ -161,6 +169,7 @@ export default function App() {
   const canvasRef = useRef(null);
   const frameCaptureCanvasRef = useRef(null);
   const transcriptEndRef = useRef(null);
+  const helpChatEndRef = useRef(null);
 
   const liveGestureLabelRef = useRef(null);
   const gestureFramesRef = useRef([]);
@@ -188,6 +197,67 @@ export default function App() {
       transcriptEndRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [transcript]);
+
+  useEffect(() => {
+    if (helpChatOpen) {
+      helpChatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [helpChatOpen, helpMessages, isSendingHelpMessage]);
+
+  useEffect(() => {
+    if (!helpChatOpen) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setHelpChatOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [helpChatOpen]);
+
+  const sendHelpMessage = useCallback(async (messageText = helpDraft) => {
+    const text = messageText.trim();
+    if (!text || helpRequestInFlightRef.current) return;
+
+    helpRequestInFlightRef.current = true;
+    const nextMessages = [...helpMessages, { role: "user", content: text }].slice(-8);
+    setHelpMessages(nextMessages);
+    setHelpDraft("");
+    setHelpChatError("");
+    setIsSendingHelpMessage(true);
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 28_000);
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/help-chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: nextMessages }),
+        signal: controller.signal,
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || `Help assistant request failed (${response.status}).`);
+      }
+      if (typeof result.answer !== "string" || !result.answer.trim()) {
+        throw new Error("The help assistant returned an empty answer. Please try again.");
+      }
+      setHelpMessages((current) => [
+        ...current,
+        { role: "assistant", content: result.answer.trim() },
+      ].slice(-8));
+    } catch (error) {
+      setHelpChatError(
+        controller.signal.aborted
+          ? "The help assistant took too long to respond. Please try again."
+          : error instanceof Error
+            ? error.message
+            : "Could not reach the help assistant. Please try again."
+      );
+    } finally {
+      window.clearTimeout(timeout);
+      helpRequestInFlightRef.current = false;
+      setIsSendingHelpMessage(false);
+    }
+  }, [helpDraft, helpMessages]);
 
   // Text-To-Speech function
   const speakText = useCallback(
@@ -1646,6 +1716,132 @@ export default function App() {
             </aside>
           </>
         )}
+      </div>
+
+      <div className="sc-help-widget">
+        {helpChatOpen && (
+          <section
+            id="sc-help-panel"
+            className="sc-help-panel"
+            role="dialog"
+            aria-modal="false"
+            aria-labelledby="sc-help-title"
+          >
+            <header className="sc-help-header">
+              <span className="sc-help-avatar"><Bot className="sc-icon-sm" /></span>
+              <div className="sc-help-heading">
+                <h2 id="sc-help-title">SignCall Assistant</h2>
+                <p>Here to help you use the app</p>
+              </div>
+              <button
+                type="button"
+                className="sc-help-close"
+                aria-label="Close help chat"
+                onClick={() => setHelpChatOpen(false)}
+              >
+                <X className="sc-icon-sm" />
+              </button>
+            </header>
+
+            <div className="sc-help-messages" aria-live="polite">
+              <div className="sc-help-message assistant">
+                Hi! I can guide you through joining a call, sign interpretation,
+                captions, voice, and other SignCall features. What would you like help with?
+              </div>
+              {helpMessages.map((message, index) => (
+                <div
+                  className={`sc-help-message ${message.role === "user" ? "user" : "assistant"}`}
+                  key={`${message.role}-${index}`}
+                >
+                  {message.content}
+                </div>
+              ))}
+              {isSendingHelpMessage && (
+                <div className="sc-help-message assistant sc-help-thinking">
+                  <span />
+                  <span />
+                  <span />
+                  <span className="sr-only">Assistant is replying</span>
+                </div>
+              )}
+              {helpChatError && (
+                <div className="sc-help-error" role="alert">
+                  <span>{helpChatError}</span>
+                  <button type="button" onClick={() => setHelpChatError("")} aria-label="Dismiss error">
+                    <X className="sc-icon-xs" />
+                  </button>
+                </div>
+              )}
+              <div ref={helpChatEndRef} />
+            </div>
+
+            {helpMessages.length === 0 && (
+              <div className="sc-help-suggestions" aria-label="Suggested questions">
+                {[
+                  "How do I join a call?",
+                  "How do gesture transcripts work?",
+                ].map((question) => (
+                  <button
+                    type="button"
+                    key={question}
+                    disabled={isSendingHelpMessage}
+                    onClick={() => sendHelpMessage(question)}
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <form
+              className="sc-help-form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                sendHelpMessage();
+              }}
+            >
+              <label htmlFor="sc-help-input" className="sr-only">
+                Ask the SignCall Assistant
+              </label>
+              <textarea
+                id="sc-help-input"
+                value={helpDraft}
+                maxLength={1000}
+                rows={1}
+                placeholder="Ask how something works…"
+                onChange={(event) => setHelpDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    sendHelpMessage();
+                  }
+                }}
+                disabled={isSendingHelpMessage}
+              />
+              <button
+                type="submit"
+                aria-label="Send help question"
+                disabled={!helpDraft.trim() || isSendingHelpMessage}
+              >
+                <Send className="sc-icon-sm" />
+              </button>
+            </form>
+            <p className="sc-help-disclaimer">
+              AI guidance may be inaccurate. Never share passwords or API keys.
+            </p>
+          </section>
+        )}
+        <button
+          type="button"
+          className={`sc-help-launcher ${helpChatOpen ? "open" : ""}`}
+          aria-label={helpChatOpen ? "Close help assistant" : "Open help assistant"}
+          aria-expanded={helpChatOpen}
+          aria-controls="sc-help-panel"
+          onClick={() => setHelpChatOpen((open) => !open)}
+        >
+          {helpChatOpen ? <X className="sc-icon" /> : <CircleHelp className="sc-icon" />}
+          {!helpChatOpen && <span>Help</span>}
+        </button>
       </div>
     </div>
   );

@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { interpretGestures, validateGestureFrames } from "./gestureAi.js";
+import {
+  answerHelpQuestion,
+  interpretGestures,
+  validateGestureFrames,
+} from "./gestureAi.js";
 
 const frames = [
   {
@@ -270,4 +274,81 @@ test("reports model-list errors and malformed generation responses", async () =>
     }),
     /incomplete transcript/
   );
+});
+
+test("answers help questions using only recent chat context and private server credentials", async () => {
+  const requests = [];
+  const result = await answerHelpQuestion({
+    messages: [
+      { role: "user", content: "How does the call work?" },
+      { role: "assistant", content: "You can create a room or join an existing one." },
+      { role: "user", content: "How do I join?" },
+    ],
+    apiKey: "test-help-key",
+    fetchImpl: async (url, options) => {
+      requests.push({ url: new URL(url), options });
+      if (!options.method) return jsonResponse(availableModels());
+      return jsonResponse({
+        candidates: [
+          { content: { parts: [{ text: "Enter your name and the room code, then select Join Room." }] } },
+        ],
+      });
+    },
+  });
+
+  assert.equal(result.answer, "Enter your name and the room code, then select Join Room.");
+  assert.equal(result.model, "gemini-3.5-flash-lite");
+  const requestBody = JSON.parse(requests[1].options.body);
+  assert.equal(requestBody.contents.length, 3);
+  assert.equal(requestBody.contents[0].role, "user");
+  assert.equal(requestBody.contents[1].role, "model");
+  assert.equal(requestBody.contents[2].role, "user");
+  assert.match(requestBody.system_instruction.parts[0].text, /Never ask users to share API keys/);
+  assert.equal(requests[1].options.headers["x-goog-api-key"], "test-help-key");
+});
+
+test("rejects invalid or oversized help chat history", async () => {
+  await assert.rejects(
+    answerHelpQuestion({
+      messages: [{ role: "user", content: "x".repeat(1001) }],
+      apiKey: "test-help-invalid",
+      fetchImpl: async () => {
+        throw new Error("Must not request Gemini for invalid chat history");
+      },
+    }),
+    /up to 8 valid recent help chat messages/
+  );
+  await assert.rejects(
+    answerHelpQuestion({
+      messages: [{ role: "assistant", content: "No user question" }],
+      apiKey: "test-help-invalid-role",
+      fetchImpl: async () => {
+        throw new Error("Must not request Gemini without a user question");
+      },
+    }),
+    /up to 8 valid recent help chat messages/
+  );
+});
+
+test("accepts a long assistant reply as recent help context", async () => {
+  const previousAnswer = "Here is a detailed explanation. ".repeat(50);
+  const result = await answerHelpQuestion({
+    messages: [
+      { role: "user", content: "How does this work?" },
+      { role: "assistant", content: previousAnswer },
+      { role: "user", content: "Is it safe?" },
+    ],
+    apiKey: "test-help-long-answer",
+    fetchImpl: async (_url, options) => {
+      if (!options.method) return jsonResponse(availableModels());
+      const requestBody = JSON.parse(options.body);
+      assert.equal(requestBody.contents[1].parts[0].text, previousAnswer.trim());
+      assert.equal(requestBody.contents[2].parts[0].text, "Is it safe?");
+      return jsonResponse({
+        candidates: [{ content: { parts: [{ text: "Yes, with these precautions." }] } }],
+      });
+    },
+  });
+
+  assert.equal(result.answer, "Yes, with these precautions.");
 });

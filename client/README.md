@@ -8,6 +8,11 @@ sequence when you finish signing or pause. Up to 8 representative frames are
 sampled across the whole phrase, including longer phrases, with timing retained
 to provide movement context.
 
+The floating **Help** assistant is available in the lobby and during calls. It
+uses the server-side Gemini key to answer SignCall how-to questions; recent
+chat context is bounded, and the assistant does not control the camera or
+change call settings.
+
 ## Run locally
 
 Get a Gemini API key and LiveKit project credentials, then run the backend and

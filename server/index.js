@@ -7,7 +7,12 @@ import { fileURLToPath } from "node:url";
 import { Server } from "socket.io";
 import { AccessToken, RoomConfiguration } from "livekit-server-sdk";
 import cors from "cors";
-import { interpretGestures, validateGestureFrames } from "./gestureAi.js";
+import {
+  answerHelpQuestion,
+  interpretGestures,
+  validateHelpMessages,
+  validateGestureFrames,
+} from "./gestureAi.js";
 
 const app = express();
 const MAX_ROOM_PARTICIPANTS = 5;
@@ -36,6 +41,57 @@ app.post("/api/interpret-gestures", async (req, res) => {
         : 502;
     console.error("Gesture AI request failed:", error.message);
     res.status(status).json({ error: error.message });
+  }
+});
+
+const helpChatRequests = new Map();
+const HELP_CHAT_WINDOW_MS = 60_000;
+const HELP_CHAT_REQUESTS_PER_WINDOW = 20;
+
+app.post("/api/help-chat", async (req, res) => {
+  const messages = req.body?.messages;
+  const validationError = validateHelpMessages(messages);
+  if (validationError) {
+    res.status(400).json({ error: validationError });
+    return;
+  }
+
+  const now = Date.now();
+  const clientKey = req.ip || req.socket.remoteAddress || "unknown";
+  const recentRequests = (helpChatRequests.get(clientKey) || []).filter(
+    (timestamp) => now - timestamp < HELP_CHAT_WINDOW_MS
+  );
+  if (helpChatRequests.size >= 1000) {
+    for (const [key, timestamps] of helpChatRequests) {
+      if (timestamps.every((timestamp) => now - timestamp >= HELP_CHAT_WINDOW_MS)) {
+        helpChatRequests.delete(key);
+      }
+    }
+  }
+  if (recentRequests.length >= HELP_CHAT_REQUESTS_PER_WINDOW) {
+    res.status(429).json({ error: "Help chat is busy. Please wait a minute and try again." });
+    return;
+  }
+  recentRequests.push(now);
+  helpChatRequests.set(clientKey, recentRequests);
+
+  try {
+    const result = await answerHelpQuestion({
+      messages,
+      apiKey: process.env.GEMINI_API_KEY,
+      model: process.env.GEMINI_MODEL,
+    });
+    res.json(result);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Could not answer the help request.";
+    const status = message.includes("not configured")
+      ? 503
+      : message.includes("timed out")
+        ? 504
+        : 502;
+    console.error("Help chat request failed:", message);
+    res.status(status).json({ error: message });
   }
 });
 
