@@ -370,37 +370,59 @@ export default function App() {
           throw new Error(result.error || `Gesture AI request failed (${response.status}).`);
         }
         if (
+          typeof result.transcript !== "string" ||
+          typeof result.expression !== "string" ||
           typeof result.reply !== "string" ||
+          !result.transcript.trim() ||
+          !result.expression.trim() ||
           !result.reply.trim()
         ) {
-          throw new Error("Gesture AI returned an empty reply.");
+          throw new Error("Gesture AI returned an incomplete transcript or reply.");
         }
+        const expression = result.expression.trim();
 
         const time = new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         });
+        const transcriptEntry = {
+          id: `sign-${Date.now()}`,
+          who: displayName,
+          mode: `AI Gesture Transcript (${signLanguage})`,
+          time,
+          text: result.transcript.trim(),
+          detail: `Visible facial expression: ${expression}`,
+          bubbleBg: "#EAF0FF",
+          textColor: "#111827",
+        };
         const aiEntry = {
-          id: `reply-${Date.now()}`,
-          who: "",
+          id: `ai-${Date.now()}`,
+          who: `SignSpeak AI (${result.model})`,
           mode: "AI Response",
           time,
           text: result.reply.trim(),
           bubbleBg: "#F0EAFF",
           textColor: "#5B21B6",
           isAI: true,
-          hideMeta: true,
         };
 
-        setTranscript((prev) => [...prev, aiEntry]);
-        setLatestGestureCaption(aiEntry.text);
-        speakText(aiEntry.text);
+        setTranscript((prev) => [...prev, transcriptEntry, aiEntry]);
+        setLatestGestureCaption({
+          transcript: transcriptEntry.text,
+          expression,
+          reply: aiEntry.text,
+        });
+        speakText(
+          `Transcript: ${transcriptEntry.text}. Visible facial expression: ${expression}. ${aiEntry.text}`
+        );
 
         if (socketRef.current && currentRoomRef.current) {
-          socketRef.current.emit("transcript-message", {
-            roomId: currentRoomRef.current,
-            message: aiEntry,
-          });
+          for (const message of [transcriptEntry, aiEntry]) {
+            socketRef.current.emit("transcript-message", {
+              roomId: currentRoomRef.current,
+              message,
+            });
+          }
         }
       } catch (error) {
         const message =
@@ -780,7 +802,7 @@ export default function App() {
           bubbleBg:
             message.mode === "Signed" ||
             message.mode === "Gesture transcript" ||
-            message.mode === "AI Gesture Transcript"
+            message.mode?.startsWith("AI Gesture Transcript")
               ? "#EAF0FF"
               : "#F4F5F7",
         },
@@ -1430,9 +1452,17 @@ export default function App() {
                           Gemini is interpreting your signed message...
                         </span>
                       ) : latestGestureCaption ? (
-                        <span className="sc-caption-reply">
-                          {latestGestureCaption}
-                        </span>
+                        <>
+                          <span className="sc-signing-live-word">
+                            {latestGestureCaption.transcript}
+                          </span>
+                          <span className="sc-caption-expression">
+                            Visible expression: {latestGestureCaption.expression}
+                          </span>
+                          <span className="sc-caption-reply">
+                            {latestGestureCaption.reply}
+                          </span>
+                        </>
                       ) : gestureFrameCount > 0 ? (
                         <span className="sc-signing-live-word">
                           Captured. Tap Finish & reply, or pause briefly for an automatic reply.
@@ -1663,11 +1693,9 @@ export default function App() {
                 <ol className="sc-transcript-feed">
                   {transcript.map((item) => (
                     <li key={item.id} className="sc-transcript-entry">
-                      {!item.hideMeta && (
-                        <span className="sc-transcript-meta">
-                          {item.who} · {item.mode} · {item.time}
-                        </span>
-                      )}
+                      <span className="sc-transcript-meta">
+                        {item.who} · {item.mode} · {item.time}
+                      </span>
                       <p
                         className="sc-transcript-bubble"
                         style={{

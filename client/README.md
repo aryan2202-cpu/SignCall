@@ -7,13 +7,15 @@ British Sign Language (BSL). The selected language guides the prompt; it does
 not train Gemini, make it fluent in that language, or cause it to learn from
 users. Up to 8 representative camera frames are sampled across a phrase, with
 timing retained to provide movement context. Because frames can miss important
-movement and regional signs vary, the reply is experimental and can be
-incorrect. The app displays and reads one concise reply to the sign, without
-showing a separate sign transcript, face/emotion description, or model name.
-When frames show plausible signing but the interpretation is uncertain, the
-reply should acknowledge uncertainty and ask a focused clarification. When no
-usable signing is visible, it asks the signer to repeat or type the message.
-Treat all output as uncertain rather than as certified translation.
+movement and regional signs vary, the transcript and reply are experimental
+and can be incorrect. The app shows the interpreted sign, apparent visible
+expression cues, and a separate reply; it identifies the Gemini model in the
+reply label. When frames show plausible signing but the interpretation is
+uncertain, the transcript may be marked as a possibility and the reply may ask
+a focused clarification. When no usable signing is visible, it asks the signer
+to repeat or type the message. Facial-expression estimates are not certainty
+about someone's feelings. Treat all output as uncertain rather than as
+certified translation.
 
 The floating **Help** assistant is available in the lobby and during calls. It
 uses the server-side Gemini key to answer SignCall how-to questions; recent
@@ -88,8 +90,9 @@ remain available for a manual retry. A failed phrase is not automatically
 resent; use Finish & reply to retry it, or Clear before starting a new phrase.
 Before joining or creating a room, each participant enters a display name; the
 name is shown on their participant tile, in the participant list, and alongside
-their transcript entries. Gesture interpretation returns one concise reply
-based on signing; it does not display facial-expression or emotion descriptions.
+their transcript entries. Gesture interpretation also reports apparent visible
+facial-expression cues when they are clear; these are estimates, not certain
+knowledge of a person's feelings.
 
 ## Deploy publicly with Render
 
@@ -112,8 +115,8 @@ take a short time to wake up. LiveKit Cloud credentials are required for
 audio/video calling.
 
 Open the local URL printed by Vite and allow camera access. Keep your hands in
-camera view while signing; choose **Finish & reply** or pause briefly to get
-one reply to the sign.
+camera view while signing; choose **Finish & reply** or pause briefly to get an
+English interpretation and reply.
 
 Gemini receives the captured camera frames for interpretation. This demo is
 not certified sign-language translation and may misunderstand signs; selecting

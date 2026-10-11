@@ -29,12 +29,16 @@ function availableModels(names = [
   };
 }
 
-function successfulGeneration(reply = "Hello! How can I help you?") {
+function successfulGeneration(
+  transcript = "Hello.",
+  reply = "Hello! How can I help you?",
+  expression = "Smiling; appears happy"
+) {
   return {
     candidates: [
       {
         content: {
-          parts: [{ text: JSON.stringify({ reply }) }],
+          parts: [{ text: JSON.stringify({ transcript, expression, reply }) }],
         },
       },
     ],
@@ -89,6 +93,8 @@ test("discovers an available model and sends the camera frames to it", async () 
     },
   });
 
+  assert.equal(result.transcript, "Hello.");
+  assert.equal(result.expression, "Smiling; appears happy");
   assert.equal(result.reply, "Hello! How can I help you?");
   assert.equal(result.model, "gemini-3.5-flash-lite");
   assert.equal(requests.length, 2);
@@ -109,13 +115,20 @@ test("discovers an available model and sends the camera frames to it", async () 
   assert.match(requestBody.contents[0].parts[0].text, /does not train the model or guarantee fluency/);
   assert.match(requestBody.contents[0].parts[0].text, /repeated side-to-side movement of an open hand/);
   assert.match(requestBody.contents[0].parts[0].text, /A single raised open palm without visible movement is not enough/);
-  assert.match(requestBody.contents[0].parts[0].text, /Do not describe, label, or infer facial expressions/);
-  assert.match(requestBody.contents[0].parts[0].text, /only one concise, helpful conversational reply/);
+  assert.match(requestBody.contents[0].parts[0].text, /Carefully inspect the face in every frame/);
+  assert.match(requestBody.contents[0].parts[0].text, /visible anger, happiness, sadness/);
+  assert.match(requestBody.contents[0].parts[0].text, /concise English transcript of the sign/);
   assert.doesNotMatch(requestBody.contents[0].parts[0].text, /Namaste/);
   assert.equal(requestBody.generationConfig.responseMimeType, "application/json");
   assert.equal(requestBody.generationConfig.maxOutputTokens, 160);
-  assert.deepEqual(Object.keys(requestBody.generationConfig.responseSchema.properties), ["reply"]);
+  assert.deepEqual(Object.keys(requestBody.generationConfig.responseSchema.properties), [
+    "transcript",
+    "expression",
+    "reply",
+  ]);
   assert.deepEqual(requestBody.generationConfig.responseSchema.required, [
+    "transcript",
+    "expression",
     "reply",
   ]);
 });
@@ -312,11 +325,11 @@ test("reports model-list errors and malformed generation responses", async () =>
       fetchImpl: async (_url, options) => {
         if (options.method !== "POST") return jsonResponse(availableModels());
         return jsonResponse({
-          candidates: [{ content: { parts: [{ text: '{"reply":""}' }] } }],
+          candidates: [{ content: { parts: [{ text: '{"transcript":"Hello"}' }] } }],
         });
       },
     }),
-    /empty sign reply/
+    /incomplete transcript/
   );
 });
 

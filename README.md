@@ -10,9 +10,9 @@ AI replies to sampled signing, and use a site-wide help assistant.
 - In-browser hand tracking and time-ordered camera-frame sampling.
 - A Settings selector for Indian Sign Language (ISL), American Sign Language
   (ASL), and British Sign Language (BSL).
-- One concise conversational reply to a signed phrase. The gesture flow does
-  not display a separate sign transcript, facial-expression description, or
-  Gemini model name.
+- English sign interpretation, apparent expression cues when supported, and a
+  conversational reply to a signed phrase. Transcript entries identify the
+  selected language and Gemini model used.
 - Typed messages, captions, optional text-to-speech, participant names, invite
   links, and transcript download.
 - A floating AI help assistant available across the app.
@@ -22,7 +22,9 @@ the Gemini prompt; it does not train the model or guarantee fluency, correct
 translation, or support for regional variants and continuous signing. Sign
 languages are distinct and are not universal. Do not rely on generated replies
 for urgent, medical, legal, or other important communication. For meaningful
-language support, involve fluent signers in design and evaluation.
+language support, involve fluent signers in design and evaluation. Facial
+expression cues are estimates, not certain knowledge of a participant's
+feelings.
 
 ## Project structure
 

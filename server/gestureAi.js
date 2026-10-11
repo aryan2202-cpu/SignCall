@@ -21,8 +21,8 @@ export const SUPPORTED_SIGN_LANGUAGES = Object.freeze({
 const HELP_SYSTEM_PROMPT = [
   "You are the SignCall website help assistant.",
   "Help first-time visitors and call participants understand how to use this app.",
-  "Features: enter a display name, create a room or join with a room code/invite link, allow camera and microphone access, join a LiveKit video call with up to five participants, choose ISL, ASL, or BSL for experimental Gemini sign interpretation, read sign replies, read replies aloud, type messages, copy invite links, download the conversation, and adjust accessibility settings such as caption size, voice, and sign detection.",
-  "Gesture interpretation samples camera frames and may take time or make mistakes; choosing a language does not train the model or guarantee it understands that language, every regional variant, or continuous signing. Users can press Finish & reply or retry saved frames after an error. It is experimental and not certified sign-language translation.",
+  "Features: enter a display name, create a room or join with a room code/invite link, allow camera and microphone access, join a LiveKit video call with up to five participants, choose ISL, ASL, or BSL for experimental Gemini sign interpretation, view the sign transcript and apparent facial-expression cues, read AI replies aloud, type messages, copy invite links, download the conversation, and adjust accessibility settings such as caption size, voice, and sign detection.",
+  "Gesture interpretation samples camera frames and may take time or make mistakes; choosing a language does not train the model or guarantee it understands that language, every regional variant, or continuous signing. Visible expression cues are uncertain estimates, not certain knowledge of someone's feelings. Users can press Finish & reply or retry saved frames after an error. It is experimental and not certified sign-language translation.",
   "Give clear, friendly, concise, step-by-step guidance. Do not claim to see the user's screen, access their camera, change settings for them, or perform actions. Do not invent features or deployment/account status. If a user reports a problem, suggest relevant checks and ask for the exact visible error when needed.",
   "Never ask users to share API keys, passwords, or secrets. For account, billing, or hosting issues, direct them to the appropriate provider dashboard.",
 ].join(" ");
@@ -201,9 +201,10 @@ export async function interpretGestures({
       text: [
         `Interpret these time-ordered images as an experimental ${SUPPORTED_SIGN_LANGUAGES[signLanguage]} interpretation and respond naturally in concise English to what the signer most likely communicated. Sign languages are distinct; do not substitute or mix signs from another language. Consider both hands, hand shape, orientation, location, movement, body posture, facial movement only when it forms part of sign grammar, and sequence. A repeated side-to-side movement of an open hand across the ordered frames is usually a casual greeting wave: reply with a greeting such as 'Hello! How can I help you?' unless the visible sequence clearly supports another meaning. A single raised open palm without visible movement is not enough to identify a wave; do not default to Hello for other signs. The selected language has regional variation, and these sampled frames may omit important motion.`,
         "If visible hands or body movement plausibly show signing, make your best effort to understand the likely meaning; do not fall back only because the exact sign is unfamiliar or confidence is imperfect. If uncertain, make the reply itself briefly acknowledge uncertainty and ask a focused clarification. Use a polite repeat-or-type request only when no usable signing information is visible across the frames. Never present a guess as certain.",
-        "Do not describe, label, or infer facial expressions, emotions, or the person's feelings. Facial movement may be considered only as a linguistic part of the selected sign language. Return only one concise, helpful conversational reply to the sign—no transcript, sign description, emotion label, headings, or multiple alternatives.",
-        `This prompt does not train the model or guarantee fluency in ${SUPPORTED_SIGN_LANGUAGES[signLanguage]}; the result is experimental and is not certified sign-language translation.`,
-        'Return only JSON matching {"reply":"..."}',
+        "Carefully inspect the face in every frame, not just the hands. Consider visible anger, happiness, sadness, surprise, fear, and confusion from facial cues. Name only the best-supported apparent expression and brief visible cues; if the face or expression is ambiguous, say 'Not clearly visible' or 'Neutral or unclear' instead of guessing.",
+        "Use visible facial expression only as context for an empathetic reply; do not change the sign meaning based only on the face or claim certainty about the person's actual feelings.",
+        `Return a concise English transcript of the sign, the apparent visible expression, and one short relevant conversational reply. This prompt does not train the model or guarantee fluency in ${SUPPORTED_SIGN_LANGUAGES[signLanguage]}; the interpretation is experimental and is not certified sign-language translation.`,
+        'Return only JSON matching {"transcript":"...","expression":"...","reply":"..."}',
       ].join(" "),
     },
   ];
@@ -245,9 +246,11 @@ export async function interpretGestures({
           responseSchema: {
             type: "OBJECT",
             properties: {
+              transcript: { type: "STRING" },
+              expression: { type: "STRING" },
               reply: { type: "STRING" },
             },
-            required: ["reply"],
+            required: ["transcript", "expression", "reply"],
           },
         },
       }),
@@ -297,14 +300,23 @@ export async function interpretGestures({
   try {
     result = JSON.parse(responseText);
   } catch {
-    throw new Error("Gemini returned an invalid sign reply.");
+    throw new Error("Gemini returned an invalid transcript response.");
   }
 
-  if (typeof result.reply !== "string" || !result.reply.trim()) {
-    throw new Error("Gemini returned an empty sign reply.");
+  if (
+    typeof result.transcript !== "string" ||
+    !result.transcript.trim() ||
+    typeof result.expression !== "string" ||
+    !result.expression.trim() ||
+    typeof result.reply !== "string" ||
+    !result.reply.trim()
+  ) {
+    throw new Error("Gemini returned an incomplete transcript response.");
   }
 
   return {
+    transcript: result.transcript.trim(),
+    expression: result.expression.trim(),
     reply: result.reply.trim(),
     model: selectedModel,
   };

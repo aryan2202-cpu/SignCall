@@ -35,7 +35,7 @@ app.post("/api/interpret-gestures", async (req, res) => {
       apiKey: process.env.GEMINI_API_KEY,
       model: process.env.GEMINI_MODEL,
     });
-    res.json({ reply: result.reply });
+    res.json(result);
   } catch (error) {
     const status = error.message.includes("not configured")
       ? 503
