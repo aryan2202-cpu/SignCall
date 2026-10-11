@@ -1724,6 +1724,22 @@ input:focus-visible {
   margin: 2px 0 0;
 }
 
+.sc-sign-language-select {
+  max-width: 240px;
+  min-height: 42px;
+  padding: 8px 34px 8px 12px;
+  border: 1px solid #D1D5DB;
+  border-radius: 10px;
+  background: #FFFFFF;
+  color: var(--sc-text-main);
+  font: inherit;
+}
+
+.sc-sign-language-select:focus-visible {
+  outline: 3px solid rgba(91, 33, 182, 0.25);
+  outline-offset: 2px;
+}
+
 .sc-slider-group {
   display: flex;
   align-items: center;
@@ -2492,6 +2508,16 @@ body {
 
   .sc-step-box {
     padding: 19px;
+  }
+
+  .sc-setting-language-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sc-sign-language-select {
+    max-width: none;
+    width: 100%;
   }
 
   .sc-call-panel {

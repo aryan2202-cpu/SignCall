@@ -1,12 +1,19 @@
 # SignSpeak
 
-SignSpeak uses the Google Gemini vision API to interpret a time-ordered sample
-of camera frames while you sign, create an English transcript, and generate a
-relevant conversational reply. It does not gate interpretation on a hard-coded
-list of gesture names: Gemini receives hand images directly and interprets the
-sequence when you finish signing or pause. Up to 8 representative frames are
-sampled across the whole phrase, including longer phrases, with timing retained
-to provide movement context.
+SignSpeak uses the Google Gemini vision API to attempt an English
+interpretation of sampled signing and generate a relevant reply. In Settings,
+users can choose Indian Sign Language (ISL), American Sign Language (ASL), or
+British Sign Language (BSL). The selected language guides the prompt; it does
+not train Gemini, make it fluent in that language, or cause it to learn from
+users. Up to 8 representative camera frames are sampled across a phrase, with
+timing retained to provide movement context. Because frames can miss important
+movement and regional signs vary, the reply is experimental and can be
+incorrect. The app displays and reads one concise reply to the sign, without
+showing a separate sign transcript, face/emotion description, or model name.
+When frames show plausible signing but the interpretation is uncertain, the
+reply should acknowledge uncertainty and ask a focused clarification. When no
+usable signing is visible, it asks the signer to repeat or type the message.
+Treat all output as uncertain rather than as certified translation.
 
 The floating **Help** assistant is available in the lobby and during calls. It
 uses the server-side Gemini key to answer SignCall how-to questions; recent
@@ -81,10 +88,8 @@ remain available for a manual retry. A failed phrase is not automatically
 resent; use Finish & reply to retry it, or Clear before starting a new phrase.
 Before joining or creating a room, each participant enters a display name; the
 name is shown on their participant tile, in the participant list, and alongside
-their transcript entries. Gesture interpretation also reports visible facial
-expression and apparent emotion cues (including angry-looking expressions)
-when clear. The reply can use those cues for context without treating them as
-certain knowledge of a person's feelings.
+their transcript entries. Gesture interpretation returns one concise reply
+based on signing; it does not display facial-expression or emotion descriptions.
 
 ## Deploy publicly with Render
 
@@ -107,11 +112,13 @@ take a short time to wake up. LiveKit Cloud credentials are required for
 audio/video calling.
 
 Open the local URL printed by Vite and allow camera access. Keep your hands in
-camera view while signing; choose **Finish & reply** or pause briefly to ask
-Gemini for the transcript and response.
+camera view while signing; choose **Finish & reply** or pause briefly to get
+one reply to the sign.
 
 Gemini receives the captured camera frames for interpretation. This demo is
-not certified sign-language translation and may misunderstand signs; general
-vision models do not guarantee correct interpretation of every sign language,
-region, or continuous sign sequence. Review transcripts before relying on them
-for important communication.
+not certified sign-language translation and may misunderstand signs; selecting
+ISL, ASL, or BSL does not guarantee interpretation of every sign, regional
+variant, or continuous sequence. It does not support every sign language.
+Review replies before relying on them for important communication. Sign
+language is not universal; adding other languages requires language-specific
+data, model work, and validation with fluent signers.

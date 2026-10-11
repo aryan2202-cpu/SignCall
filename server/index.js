@@ -12,6 +12,7 @@ import {
   interpretGestures,
   validateHelpMessages,
   validateGestureFrames,
+  validateSignLanguage,
 } from "./gestureAi.js";
 
 const app = express();
@@ -21,18 +22,20 @@ app.use(express.json({ limit: "9mb" }));
 
 app.post("/api/interpret-gestures", async (req, res) => {
   const validationError = validateGestureFrames(req.body?.frames);
-  if (validationError) {
-    res.status(400).json({ error: validationError });
+  const languageError = validateSignLanguage(req.body?.signLanguage ?? "ISL");
+  if (validationError || languageError) {
+    res.status(400).json({ error: validationError || languageError });
     return;
   }
 
   try {
     const result = await interpretGestures({
       frames: req.body.frames,
+      signLanguage: req.body.signLanguage ?? "ISL",
       apiKey: process.env.GEMINI_API_KEY,
       model: process.env.GEMINI_MODEL,
     });
-    res.json(result);
+    res.json({ reply: result.reply });
   } catch (error) {
     const status = error.message.includes("not configured")
       ? 503

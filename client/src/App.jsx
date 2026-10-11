@@ -120,6 +120,7 @@ export default function App() {
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [signMode, setSignMode] = useState(true);
+  const [signLanguage, setSignLanguage] = useState("ISL");
   const [captionsOn, setCaptionsOn] = useState(true);
   const [voiceOn, setVoiceOn] = useState(true);
   const [captionPx, setCaptionPx] = useState(28);
@@ -146,7 +147,7 @@ export default function App() {
       who: "SignCall",
       mode: "System",
       time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      text: "Gemini gesture understanding is ready. Sign a phrase and finish it to get an AI transcript and reply.",
+      text: "Sign a phrase and finish it to receive one concise AI reply.",
       bubbleBg: "#F4F5F7",
       textColor: "#6B7280",
     },
@@ -360,7 +361,7 @@ export default function App() {
         const response = await fetch(`${BACKEND_URL}/api/interpret-gestures`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ frames }),
+          body: JSON.stringify({ frames, signLanguage }),
           signal: controller.signal,
         });
         const result = await response.json();
@@ -369,60 +370,37 @@ export default function App() {
           throw new Error(result.error || `Gesture AI request failed (${response.status}).`);
         }
         if (
-          typeof result.transcript !== "string" ||
           typeof result.reply !== "string" ||
-          !result.transcript.trim() ||
           !result.reply.trim()
         ) {
-          throw new Error("Gesture AI returned an incomplete transcript or reply.");
+          throw new Error("Gesture AI returned an empty reply.");
         }
-        const expression =
-          typeof result.expression === "string" && result.expression.trim()
-            ? result.expression.trim()
-            : "Not available";
 
         const time = new Date().toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
         });
-        const transcriptEntry = {
-          id: `sign-${Date.now()}`,
-          who: displayName,
-          mode: "AI Gesture Transcript",
-          time,
-          text: result.transcript.trim(),
-          detail: `Visible facial expression: ${expression}`,
-          bubbleBg: "#EAF0FF",
-          textColor: "#111827",
-        };
         const aiEntry = {
-          id: `ai-${Date.now()}`,
-          who: `SignSpeak AI (${result.model})`,
+          id: `reply-${Date.now()}`,
+          who: "",
           mode: "AI Response",
           time,
           text: result.reply.trim(),
           bubbleBg: "#F0EAFF",
           textColor: "#5B21B6",
           isAI: true,
+          hideMeta: true,
         };
 
-        setTranscript((prev) => [...prev, transcriptEntry, aiEntry]);
-        setLatestGestureCaption({
-          transcript: transcriptEntry.text,
-          expression,
-          reply: aiEntry.text,
-        });
-        speakText(
-          `Transcript: ${transcriptEntry.text}. Visible facial expression: ${expression}. ${aiEntry.text}`
-        );
+        setTranscript((prev) => [...prev, aiEntry]);
+        setLatestGestureCaption(aiEntry.text);
+        speakText(aiEntry.text);
 
         if (socketRef.current && currentRoomRef.current) {
-          for (const message of [transcriptEntry, aiEntry]) {
-            socketRef.current.emit("transcript-message", {
-              roomId: currentRoomRef.current,
-              message,
-            });
-          }
+          socketRef.current.emit("transcript-message", {
+            roomId: currentRoomRef.current,
+            message: aiEntry,
+          });
         }
       } catch (error) {
         const message =
@@ -443,7 +421,7 @@ export default function App() {
         setIsInterpretingGestures(false);
       }
     })();
-  }, [displayName, speakText]);
+  }, [displayName, signLanguage, speakText]);
 
   // Sync video streams with elements
   useEffect(() => {
@@ -982,14 +960,14 @@ export default function App() {
   // Download Transcript as text
   const handleDownloadTranscript = () => {
     const textContent = transcript
-      .map((t) =>
-        [
-          `[${t.time}] ${t.who} (${t.mode}): ${t.text}`,
-          t.detail ? `  ${t.detail}` : null,
-        ]
-          .filter(Boolean)
-          .join("\n")
-      )
+      .map((t) => t.hideMeta
+        ? t.text
+        : [
+            `[${t.time}] ${t.who} (${t.mode}): ${t.text}`,
+            t.detail ? `  ${t.detail}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n"))
       .join("\n");
     const blob = new Blob([textContent], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -1080,6 +1058,29 @@ export default function App() {
             </div>
 
             <div className="sc-settings-body">
+              <div className="sc-setting-row sc-setting-language-row">
+                <div>
+                  <label className="sc-setting-label" htmlFor="sc-sign-language">
+                    Sign language
+                  </label>
+                  <p className="sc-setting-hint" id="sc-sign-language-hint">
+                    Select the language being signed. Clear pending frames before changing it; results are experimental and may be inaccurate.
+                  </p>
+                </div>
+                <select
+                  id="sc-sign-language"
+                  aria-describedby="sc-sign-language-hint"
+                  className="sc-sign-language-select"
+                  value={signLanguage}
+                  onChange={(event) => setSignLanguage(event.target.value)}
+                  disabled={gestureFrameCount > 0 || isInterpretingGestures}
+                >
+                  <option value="ISL">Indian Sign Language (ISL)</option>
+                  <option value="ASL">American Sign Language (ASL)</option>
+                  <option value="BSL">British Sign Language (BSL)</option>
+                </select>
+              </div>
+
               <div className="sc-setting-row">
                 <div>
                   <label className="sc-setting-label">Caption Font Size</label>
@@ -1167,7 +1168,7 @@ export default function App() {
             <div className="sc-hero-content">
               <div className="sc-badge-tag">
                 <Sparkles className="sc-icon-xs text-blue" />
-                <span>Gemini AI Gesture Understanding & Voice Replies</span>
+                <span>Experimental ISL, ASL &amp; BSL Gesture Interpretation</span>
               </div>
 
               <h2 className="sc-hero-headline">
@@ -1241,7 +1242,7 @@ export default function App() {
                 <div className="sc-step-box">
                   <div className="sc-step-num">02</div>
                   <h4>Text</h4>
-                  <p>Gemini interprets sampled camera frames and creates a readable transcript.</p>
+                  <p>Gemini replies to sampled signing; choose ISL, ASL, or BSL in Settings. Results are experimental.</p>
                 </div>
                 <div className="sc-step-box">
                   <div className="sc-step-num">03</div>
@@ -1429,24 +1430,16 @@ export default function App() {
                           Gemini is interpreting your signed message...
                         </span>
                       ) : latestGestureCaption ? (
-                        <>
-                          <span className="sc-signing-live-word">
-                            {latestGestureCaption.transcript}
-                          </span>
-                          <span className="sc-caption-expression">
-                            Visible expression: {latestGestureCaption.expression}
-                          </span>
-                          <span className="sc-caption-reply">
-                            {latestGestureCaption.reply}
-                          </span>
-                        </>
+                        <span className="sc-caption-reply">
+                          {latestGestureCaption}
+                        </span>
                       ) : gestureFrameCount > 0 ? (
                         <span className="sc-signing-live-word">
-                          Captured. Tap Finish & reply, or pause briefly for automatic transcription.
+                          Captured. Tap Finish & reply, or pause briefly for an automatic reply.
                         </span>
                       ) : (
                         <span className="sc-signing-empty">
-                          Sign naturally in view of the camera. Gemini interprets the sequence, not a fixed sign list...
+                          Sign in {signLanguage} and keep your hands visible. Experimental Gemini interpretation may be inaccurate...
                         </span>
                       )}
                       <span className="sc-caret" />
@@ -1670,9 +1663,11 @@ export default function App() {
                 <ol className="sc-transcript-feed">
                   {transcript.map((item) => (
                     <li key={item.id} className="sc-transcript-entry">
-                      <span className="sc-transcript-meta">
-                        {item.who} · {item.mode} · {item.time}
-                      </span>
+                      {!item.hideMeta && (
+                        <span className="sc-transcript-meta">
+                          {item.who} · {item.mode} · {item.time}
+                        </span>
+                      )}
                       <p
                         className="sc-transcript-bubble"
                         style={{

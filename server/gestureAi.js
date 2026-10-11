@@ -13,11 +13,16 @@ const MODEL_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const GEMINI_REQUEST_TIMEOUT_MS = 25_000;
 const MAX_HELP_USER_MESSAGE_LENGTH = 1000;
 const MAX_HELP_ASSISTANT_MESSAGE_LENGTH = 4000;
+export const SUPPORTED_SIGN_LANGUAGES = Object.freeze({
+  ISL: "Indian Sign Language (ISL)",
+  ASL: "American Sign Language (ASL)",
+  BSL: "British Sign Language (BSL)",
+});
 const HELP_SYSTEM_PROMPT = [
   "You are the SignCall website help assistant.",
   "Help first-time visitors and call participants understand how to use this app.",
-  "Features: enter a display name, create a room or join with a room code/invite link, allow camera and microphone access, join a LiveKit video call with up to five participants, use Gemini AI sign/gesture interpretation and visible facial-expression cues, read transcripts and AI replies, read replies aloud, type messages, copy invite links, download transcripts, and adjust accessibility settings such as caption size, voice, and sign detection.",
-  "Gesture interpretation samples camera frames and may take time or make mistakes; users can press Finish & reply or retry saved frames after an error. It is experimental and not certified sign-language translation.",
+  "Features: enter a display name, create a room or join with a room code/invite link, allow camera and microphone access, join a LiveKit video call with up to five participants, choose ISL, ASL, or BSL for experimental Gemini sign interpretation, read sign replies, read replies aloud, type messages, copy invite links, download the conversation, and adjust accessibility settings such as caption size, voice, and sign detection.",
+  "Gesture interpretation samples camera frames and may take time or make mistakes; choosing a language does not train the model or guarantee it understands that language, every regional variant, or continuous signing. Users can press Finish & reply or retry saved frames after an error. It is experimental and not certified sign-language translation.",
   "Give clear, friendly, concise, step-by-step guidance. Do not claim to see the user's screen, access their camera, change settings for them, or perform actions. Do not invent features or deployment/account status. If a user reports a problem, suggest relevant checks and ask for the exact visible error when needed.",
   "Never ask users to share API keys, passwords, or secrets. For account, billing, or hosting issues, direct them to the appropriate provider dashboard.",
 ].join(" ");
@@ -172,8 +177,15 @@ export function validateHelpMessages(messages) {
   return null;
 }
 
+export function validateSignLanguage(language) {
+  return Object.hasOwn(SUPPORTED_SIGN_LANGUAGES, language)
+    ? null
+    : "Choose Indian Sign Language (ISL), American Sign Language (ASL), or British Sign Language (BSL).";
+}
+
 export async function interpretGestures({
   frames,
+  signLanguage = "ISL",
   apiKey,
   model,
   fetchImpl = fetch,
@@ -181,16 +193,17 @@ export async function interpretGestures({
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured on the server.");
   }
+  const languageError = validateSignLanguage(signLanguage);
+  if (languageError) throw new Error(languageError);
 
   const parts = [
     {
       text: [
-        "Interpret these time-ordered images of a person's hands, body, and face. Identify the specific sign or casual/social gesture from hand shape, orientation, location, motion, and context; support an open vocabulary and do not default to Hello. A static open palm is not a wave. If unclear, describe what is visible rather than inventing a translation.",
-        "Carefully inspect the face in every frame, not just the hands. Explicitly consider anger: lowered or knitted brows, narrowed eyes, a tense jaw, or pressed lips can indicate an angry-looking expression. Also consider happiness, sadness, surprise, fear, and confusion from visible facial cues.",
-        "In the expression field, name the best-supported visible emotion (for example 'Angry-looking: brows lowered and lips pressed') rather than only listing facial features. If the face is too small, obscured, or ambiguous, say 'Not clearly visible' instead of guessing.",
-        "Use the apparent emotion as context for a considerate, empathetic reply to the sign, but do not change the sign transcript based only on the face. Describe an apparent expression, not certain knowledge of the person's true feelings or mental state.",
-        "Return a very concise transcript, expression, and one short relevant reply. This is experimental, not certified sign-language translation.",
-        'Return only JSON matching {"transcript":"...","expression":"...","reply":"..."}',
+        `Interpret these time-ordered images as an experimental ${SUPPORTED_SIGN_LANGUAGES[signLanguage]} interpretation and respond naturally in concise English to what the signer most likely communicated. Sign languages are distinct; do not substitute or mix signs from another language. Consider both hands, hand shape, orientation, location, movement, body posture, facial movement only when it forms part of sign grammar, and sequence. A repeated side-to-side movement of an open hand across the ordered frames is usually a casual greeting wave: reply with a greeting such as 'Hello! How can I help you?' unless the visible sequence clearly supports another meaning. A single raised open palm without visible movement is not enough to identify a wave; do not default to Hello for other signs. The selected language has regional variation, and these sampled frames may omit important motion.`,
+        "If visible hands or body movement plausibly show signing, make your best effort to understand the likely meaning; do not fall back only because the exact sign is unfamiliar or confidence is imperfect. If uncertain, make the reply itself briefly acknowledge uncertainty and ask a focused clarification. Use a polite repeat-or-type request only when no usable signing information is visible across the frames. Never present a guess as certain.",
+        "Do not describe, label, or infer facial expressions, emotions, or the person's feelings. Facial movement may be considered only as a linguistic part of the selected sign language. Return only one concise, helpful conversational reply to the sign—no transcript, sign description, emotion label, headings, or multiple alternatives.",
+        `This prompt does not train the model or guarantee fluency in ${SUPPORTED_SIGN_LANGUAGES[signLanguage]}; the result is experimental and is not certified sign-language translation.`,
+        'Return only JSON matching {"reply":"..."}',
       ].join(" "),
     },
   ];
@@ -232,11 +245,9 @@ export async function interpretGestures({
           responseSchema: {
             type: "OBJECT",
             properties: {
-              transcript: { type: "STRING" },
-              expression: { type: "STRING" },
               reply: { type: "STRING" },
             },
-            required: ["transcript", "expression", "reply"],
+            required: ["reply"],
           },
         },
       }),
@@ -286,23 +297,14 @@ export async function interpretGestures({
   try {
     result = JSON.parse(responseText);
   } catch {
-    throw new Error("Gemini returned an invalid transcript response.");
+    throw new Error("Gemini returned an invalid sign reply.");
   }
 
-  if (
-    typeof result.transcript !== "string" ||
-    !result.transcript.trim() ||
-    typeof result.expression !== "string" ||
-    !result.expression.trim() ||
-    typeof result.reply !== "string" ||
-    !result.reply.trim()
-  ) {
-    throw new Error("Gemini returned an incomplete transcript response.");
+  if (typeof result.reply !== "string" || !result.reply.trim()) {
+    throw new Error("Gemini returned an empty sign reply.");
   }
 
   return {
-    transcript: result.transcript.trim(),
-    expression: result.expression.trim(),
     reply: result.reply.trim(),
     model: selectedModel,
   };

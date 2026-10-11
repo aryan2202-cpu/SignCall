@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
   answerHelpQuestion,
   interpretGestures,
+  validateSignLanguage,
   validateGestureFrames,
 } from "./gestureAi.js";
 
@@ -28,16 +29,12 @@ function availableModels(names = [
   };
 }
 
-function successfulGeneration(
-  transcript = "Namaste.",
-  reply = "Namaste!",
-  expression = "Smiling; appears happy"
-) {
+function successfulGeneration(reply = "Hello! How can I help you?") {
   return {
     candidates: [
       {
         content: {
-          parts: [{ text: JSON.stringify({ transcript, expression, reply }) }],
+          parts: [{ text: JSON.stringify({ reply }) }],
         },
       },
     ],
@@ -71,6 +68,13 @@ test("validates a bounded list of JPEG gesture frames", () => {
   );
 });
 
+test("only accepts the supported sign language choices", () => {
+  assert.equal(validateSignLanguage("ISL"), null);
+  assert.equal(validateSignLanguage("ASL"), null);
+  assert.equal(validateSignLanguage("BSL"), null);
+  assert.match(validateSignLanguage("universal"), /Choose Indian Sign Language/);
+});
+
 test("discovers an available model and sends the camera frames to it", async () => {
   const requests = [];
   const result = await interpretGestures({
@@ -85,9 +89,7 @@ test("discovers an available model and sends the camera frames to it", async () 
     },
   });
 
-  assert.equal(result.transcript, "Namaste.");
-  assert.equal(result.expression, "Smiling; appears happy");
-  assert.equal(result.reply, "Namaste!");
+  assert.equal(result.reply, "Hello! How can I help you?");
   assert.equal(result.model, "gemini-3.5-flash-lite");
   assert.equal(requests.length, 2);
   assert.equal(requests[0].url.pathname, "/v1beta/models");
@@ -99,20 +101,62 @@ test("discovers an available model and sends the camera frames to it", async () 
   assert.equal(requests[1].options.headers["x-goog-api-key"], "test-discovery-key");
   const requestBody = JSON.parse(requests[1].options.body);
   assert.equal(requestBody.contents[0].parts[2].inline_data.data, "AQID");
-  assert.match(requestBody.contents[0].parts[0].text, /support an open vocabulary/i);
-  assert.match(requestBody.contents[0].parts[0].text, /A static open palm is not a wave/);
-  assert.match(requestBody.contents[0].parts[0].text, /Carefully inspect the face in every frame, not just the hands/);
-  assert.match(requestBody.contents[0].parts[0].text, /Explicitly consider anger/);
-  assert.match(requestBody.contents[0].parts[0].text, /use the apparent emotion as context/i);
-  assert.match(requestBody.contents[0].parts[0].text, /not certain knowledge of the person's true feelings/i);
+  assert.match(requestBody.contents[0].parts[0].text, /Indian Sign Language \(ISL\)/);
+  assert.match(requestBody.contents[0].parts[0].text, /Sign languages are distinct/);
+  assert.match(requestBody.contents[0].parts[0].text, /make your best effort to understand the likely meaning/);
+  assert.match(requestBody.contents[0].parts[0].text, /reply itself briefly acknowledge uncertainty/);
+  assert.match(requestBody.contents[0].parts[0].text, /only when no usable signing information is visible across the frames/);
+  assert.match(requestBody.contents[0].parts[0].text, /does not train the model or guarantee fluency/);
+  assert.match(requestBody.contents[0].parts[0].text, /repeated side-to-side movement of an open hand/);
+  assert.match(requestBody.contents[0].parts[0].text, /A single raised open palm without visible movement is not enough/);
+  assert.match(requestBody.contents[0].parts[0].text, /Do not describe, label, or infer facial expressions/);
+  assert.match(requestBody.contents[0].parts[0].text, /only one concise, helpful conversational reply/);
   assert.doesNotMatch(requestBody.contents[0].parts[0].text, /Namaste/);
   assert.equal(requestBody.generationConfig.responseMimeType, "application/json");
   assert.equal(requestBody.generationConfig.maxOutputTokens, 160);
+  assert.deepEqual(Object.keys(requestBody.generationConfig.responseSchema.properties), ["reply"]);
   assert.deepEqual(requestBody.generationConfig.responseSchema.required, [
-    "transcript",
-    "expression",
     "reply",
   ]);
+});
+
+test("targets the selected ASL or BSL without confusing them with each other", async (t) => {
+  for (const [signLanguage, name] of [
+    ["ASL", "American Sign Language (ASL)"],
+    ["BSL", "British Sign Language (BSL)"],
+  ]) {
+    await t.test(signLanguage, async () => {
+      let generationPrompt = "";
+      await interpretGestures({
+        frames,
+        signLanguage,
+        apiKey: `test-${signLanguage.toLowerCase()}-key`,
+        fetchImpl: async (_url, options) => {
+          if (!options.method) return jsonResponse(availableModels());
+          generationPrompt = JSON.parse(options.body).contents[0].parts[0].text;
+          return jsonResponse(successfulGeneration());
+        },
+      });
+
+      assert.match(generationPrompt, new RegExp(name.replace(/[()]/g, "\\$&")));
+      assert.match(generationPrompt, /do not substitute or mix signs from another language/);
+      assert.match(generationPrompt, /does not train the model or guarantee fluency/);
+    });
+  }
+});
+
+test("rejects unsupported sign language values before requesting Gemini", async () => {
+  await assert.rejects(
+    interpretGestures({
+      frames,
+      signLanguage: "universal",
+      apiKey: "test-unsupported-language",
+      fetchImpl: async () => {
+        throw new Error("Must not request Gemini for an unsupported sign language");
+      },
+    }),
+    /Choose Indian Sign Language/
+  );
 });
 
 test("prefers a configured model only when the API key has access to it", async () => {
@@ -268,11 +312,11 @@ test("reports model-list errors and malformed generation responses", async () =>
       fetchImpl: async (_url, options) => {
         if (options.method !== "POST") return jsonResponse(availableModels());
         return jsonResponse({
-          candidates: [{ content: { parts: [{ text: '{"transcript":"Hello"}' }] } }],
+          candidates: [{ content: { parts: [{ text: '{"reply":""}' }] } }],
         });
       },
     }),
-    /incomplete transcript/
+    /empty sign reply/
   );
 });
 
